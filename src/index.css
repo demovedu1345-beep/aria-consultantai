@@ -2,104 +2,131 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* ARIA — Premium Dark Consultant Design System
+   All colors HSL. Calm, expensive, restrained. Bone & gold over deep charcoal.
 */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Deep charcoal canvas */
+    --background: 30 8% 6%;
+    --foreground: 36 25% 90%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    /* Slightly elevated surface */
+    --card: 30 8% 8%;
+    --card-foreground: 36 25% 92%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 30 8% 7%;
+    --popover-foreground: 36 25% 92%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Bone — primary text/CTA on dark */
+    --primary: 36 30% 88%;
+    --primary-foreground: 30 10% 8%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 30 6% 14%;
+    --secondary-foreground: 36 22% 86%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 30 6% 12%;
+    --muted-foreground: 36 10% 58%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Antique gold accent */
+    --accent: 40 55% 58%;
+    --accent-foreground: 30 15% 8%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 8 70% 55%;
+    --destructive-foreground: 36 25% 95%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --warning: 38 90% 60%;
+    --success: 150 45% 50%;
 
-    --radius: 0.5rem;
+    --border: 30 8% 16%;
+    --input: 30 8% 14%;
+    --ring: 40 55% 58%;
 
-    --sidebar-background: 0 0% 98%;
+    --radius: 0.25rem;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    /* Semantic gradients */
+    --gradient-gold: linear-gradient(135deg, hsl(40 60% 62%), hsl(36 50% 45%));
+    --gradient-surface: linear-gradient(180deg, hsl(30 8% 9%), hsl(30 8% 6%));
+    --gradient-glow: radial-gradient(60% 50% at 50% 0%, hsl(40 55% 58% / 0.12), transparent 70%);
 
-    --sidebar-primary: 240 5.9% 10%;
+    /* Shadows */
+    --shadow-soft: 0 1px 0 hsl(36 25% 95% / 0.04) inset, 0 24px 60px -30px hsl(0 0% 0% / 0.6);
+    --shadow-gold: 0 0 0 1px hsl(40 55% 58% / 0.3), 0 16px 40px -16px hsl(40 55% 58% / 0.35);
 
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Typography scale */
+    --font-display: 'Cormorant Garamond', 'Playfair Display', ui-serif, Georgia, serif;
+    --font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
   }
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+  /* Force dark for ARIA — no light mode */
+  html { color-scheme: dark; }
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-}
-
-@layer base {
   * {
     @apply border-border;
   }
 
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-body);
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -10%, hsl(40 55% 58% / 0.08), transparent 60%),
+      radial-gradient(ellipse 60% 40% at 90% 100%, hsl(40 55% 58% / 0.05), transparent 70%);
+    background-attachment: fixed;
   }
+
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+}
+
+@layer components {
+  .aria-rule {
+    @apply text-muted-foreground/40 select-none tracking-[0.3em] text-xs uppercase;
+  }
+  .aria-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, hsl(var(--border)), transparent);
+  }
+  .aria-card {
+    @apply rounded-md border border-border/60 bg-card/80 backdrop-blur-sm;
+    box-shadow: var(--shadow-soft);
+  }
+  .aria-bar {
+    @apply h-1.5 w-full rounded-full bg-muted overflow-hidden;
+  }
+  .aria-bar > span {
+    @apply block h-full;
+    background: var(--gradient-gold);
+  }
+  .aria-glow {
+    background: var(--gradient-glow);
+  }
+  .aria-tag {
+    @apply inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-accent/30 bg-accent/5 text-accent text-[10px] tracking-[0.2em] uppercase;
+  }
+}
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+  @keyframes pulse-ring {
+    0%, 100% { transform: scale(1); opacity: 0.6; }
+    50% { transform: scale(1.15); opacity: 1; }
+  }
+  .animate-pulse-ring { animation: pulse-ring 2s ease-in-out infinite; }
+  @keyframes voice-wave {
+    0%, 100% { transform: scaleY(0.3); }
+    50% { transform: scaleY(1); }
+  }
+  .animate-voice-wave { animation: voice-wave 1.2s ease-in-out infinite; }
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fade-up { animation: fade-up 0.5s ease-out both; }
 }
