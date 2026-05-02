@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Onboarding } from "@/components/Onboarding";
 import { Dashboard } from "@/components/Dashboard";
 import { VoiceSession } from "@/components/VoiceSession";
+import { Operator } from "@/components/Operator";
 import {
   AriaState, BusinessProfile, SessionRecord,
   buildMemory, extractActions, loadState, resetState, saveState,
 } from "@/lib/aria-store";
-import { Loader2, Mic, RotateCw, Sparkles } from "lucide-react";
+import { Loader2, Mic, RotateCw, Sparkles, Zap, BarChart3 } from "lucide-react";
 
 export default function Index() {
   const [state, setState] = useState<AriaState>(() => loadState());
