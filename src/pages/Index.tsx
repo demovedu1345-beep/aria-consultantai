@@ -196,14 +196,24 @@ export default function Index() {
       </header>
 
       <div className="max-w-5xl mx-auto px-6 pt-10">
-        {loading && !activeSession && (
-          <div className="flex items-center gap-3 text-muted-foreground"><Loader2 className="animate-spin" /> Synthesizing…</div>
-        )}
-        {activeSession && (
-          <Dashboard
-            content={activeSession.content}
-            actionMarks={actionMarks}
-            onMarkAction={markAction}
+        {mode === "advisor" ? (
+          <>
+            {loading && !activeSession && (
+              <div className="flex items-center gap-3 text-muted-foreground"><Loader2 className="animate-spin" /> Synthesizing…</div>
+            )}
+            {activeSession && (
+              <Dashboard
+                content={activeSession.content}
+                actionMarks={actionMarks}
+                onMarkAction={markAction}
+              />
+            )}
+          </>
+        ) : (
+          <Operator
+            profile={state.profile}
+            state={state}
+            onTrace={() => { /* could persist cycles to localStorage */ }}
           />
         )}
       </div>
