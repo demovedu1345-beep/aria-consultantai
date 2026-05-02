@@ -1,0 +1,239 @@
+// ARIA operator — V4 autonomous executor.
+// Asks the AI for a JSON plan of tool calls, executes them, returns the trace.
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") || "";
+const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY") || "";
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
+const HUBSPOT_API_KEY = Deno.env.get("HUBSPOT_API_KEY") || "";
+const GOOGLE_CALENDAR_API_KEY = Deno.env.get("GOOGLE_CALENDAR_API_KEY") || "";
+
+const GATEWAY = "https://connector-gateway.lovable.dev";
+
+// ---------- V4 system prompt ----------
+const SYSTEM_PROMPT = `You are ARIA — Advanced Real-time Intelligence Advisor.
+Autonomous AI Business Operator (Tool-Aware V4).
+
+You do not just give advice. You decide, structure, and trigger real-world execution using available tools.
+
+CORE BEHAVIOR
+- Direct, decisive, execution-focused.
+- No theory when execution is possible.
+- Always real-world action over advice.
+
+EXECUTION-FIRST PRINCIPLE
+If a task can be executed using tools → DO NOT explain → EMIT TOOL CALLS.
+If execution is not possible → provide exact copy-paste outputs in "fallback".
+
+AVAILABLE TOOLS (use these names EXACTLY)
+- google_search        input: { query: string, limit?: number }                       → web search results
+- linkedin_search      input: { query: string, limit?: number }                       → linkedin profile results
+- web_scraper          input: { url: string }                                          → page markdown + extracted emails
+- email_sender         input: { to, subject, html?, text?, from? }                    → sends via Resend
+- crm_create_lead      input: { email, firstname?, lastname?, company?, phone?, website?, notes? }   → HubSpot contact
+- crm_update_status    input: { contact_id, lifecyclestage?, hs_lead_status?, notes? }                → HubSpot patch
+- calendar_book        input: { summary, description?, start (ISO), end (ISO), attendees?: [emails] } → Google Calendar event
+- analytics_tracker    input: { event: string, props?: object }                       → logs locally
+
+EXECUTION FLOW
+Find leads → Extract → Store (CRM) → Outreach → Track → Handle replies (update CRM / book call).
+
+PRIORITY RULE
+Only execute tasks that directly impact revenue or unblock the main bottleneck.
+Ignore low-value actions.
+
+SAFETY
+- Personalize every email. No spam.
+- Batch size 20–50 max per cycle.
+- Realistic pacing.
+- Never invent emails — only send to addresses confirmed via web_scraper or provided by the user.
+
+OUTPUT FORMAT — STRICT JSON (no prose outside the JSON object):
+{
+  "thought": "1-3 short sentences: bottleneck + chosen move.",
+  "tool_calls": [
+    { "tool": "<tool_name>", "action": "<short label>", "input": { ... } }
+  ],
+  "fallback": "optional plain-text instructions if no tools fit",
+  "next": "what you'll do after results come back"
+}
+
+If nothing should be executed this cycle, return tool_calls: [] and put copy-paste guidance in "fallback".
+Maximum 8 tool_calls per response. Order them logically (search → scrape → store → email).
+`;
+
+// ---------- Tool dispatch (mirrors aria-execute) ----------
+
+async function gw(connector: string, path: string, init: RequestInit, apiKey: string) {
+  const r = await fetch(`${GATEWAY}/${connector}${path}`, {
+    ...init,
+    headers: {
+      ...(init.headers || {}),
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "X-Connection-Api-Key": apiKey,
+      "Content-Type": "application/json",
+    },
+  });
+  const text = await r.text();
+  let body: unknown = text; try { body = JSON.parse(text); } catch { /* keep */ }
+  if (!r.ok) throw new Error(`${connector} ${r.status}: ${typeof body === "string" ? body : JSON.stringify(body).slice(0, 400)}`);
+  return body;
+}
+
+async function tFirecrawlSearch(query: string, limit = 10) {
+  const r = await fetch("https://api.firecrawl.dev/v2/search", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${FIRECRAWL_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ query, limit: Math.min(limit, 20) }),
+  });
+  const data = await r.json();
+  if (!r.ok) throw new Error(`firecrawl search ${r.status}: ${JSON.stringify(data).slice(0, 400)}`);
+  const raw = data?.data?.web ?? data?.web ?? data?.data ?? data?.results ?? [];
+  const results = (Array.isArray(raw) ? raw : []).map((x: any) => ({
+    title: x.title || x.name || "",
+    url: x.url || x.link || "",
+    snippet: x.description || x.snippet || "",
+  }));
+  return { query, results };
+}
+
+async function dispatch(tool: string, input: Record<string, any>) {
+  switch (tool) {
+    case "google_search": {
+      if (!FIRECRAWL_API_KEY) throw new Error("FIRECRAWL_API_KEY missing");
+      return tFirecrawlSearch(String(input.query || ""), Number(input.limit || 10));
+    }
+    case "linkedin_search": {
+      if (!FIRECRAWL_API_KEY) throw new Error("FIRECRAWL_API_KEY missing");
+      return tFirecrawlSearch(`site:linkedin.com/in ${input.query || ""}`, Number(input.limit || 10));
+    }
+    case "web_scraper": {
+      if (!FIRECRAWL_API_KEY) throw new Error("FIRECRAWL_API_KEY missing");
+      const r = await fetch("https://api.firecrawl.dev/v2/scrape", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${FIRECRAWL_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ url: input.url, formats: ["markdown"], onlyMainContent: true }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(`firecrawl scrape ${r.status}: ${JSON.stringify(data).slice(0, 400)}`);
+      const md: string = data?.markdown || data?.data?.markdown || "";
+      const meta = data?.metadata || data?.data?.metadata || {};
+      const emails = Array.from(new Set((md.match(/[\w.+-]+@[\w-]+\.[\w.-]+/g) || []).filter(e => !/\.(png|jpg|jpeg|svg|gif)$/i.test(e))));
+      return { url: input.url, title: meta.title || "", emails, markdown: md.slice(0, 3000) };
+    }
+    case "email_sender": {
+      if (!RESEND_API_KEY) throw new Error("RESEND_API_KEY missing");
+      if (!input.to || !input.subject || (!input.html && !input.text)) throw new Error("email_sender requires to, subject, html|text");
+      const body = {
+        from: input.from || "ARIA <onboarding@resend.dev>",
+        to: [input.to],
+        subject: input.subject,
+        html: input.html || `<p>${String(input.text || "").replace(/\n/g, "<br/>")}</p>`,
+      };
+      return await gw("resend", "/emails", { method: "POST", body: JSON.stringify(body) }, RESEND_API_KEY);
+    }
+    case "crm_create_lead": {
+      if (!HUBSPOT_API_KEY) throw new Error("HUBSPOT_API_KEY missing");
+      const properties: Record<string, string> = { email: String(input.email || "") };
+      for (const k of ["firstname","lastname","company","phone","website"]) if (input[k]) properties[k] = String(input[k]);
+      if (input.notes) properties.hs_content_membership_notes = String(input.notes);
+      return await gw("hubspot", "/crm/v3/objects/contacts", { method: "POST", body: JSON.stringify({ properties }) }, HUBSPOT_API_KEY);
+    }
+    case "crm_update_status": {
+      if (!HUBSPOT_API_KEY) throw new Error("HUBSPOT_API_KEY missing");
+      const properties: Record<string, string> = {};
+      for (const k of ["lifecyclestage","hs_lead_status"]) if (input[k]) properties[k] = String(input[k]);
+      if (input.notes) properties.hs_content_membership_notes = String(input.notes);
+      return await gw("hubspot", `/crm/v3/objects/contacts/${encodeURIComponent(String(input.contact_id))}`, { method: "PATCH", body: JSON.stringify({ properties }) }, HUBSPOT_API_KEY);
+    }
+    case "calendar_book": {
+      if (!GOOGLE_CALENDAR_API_KEY) throw new Error("GOOGLE_CALENDAR_API_KEY missing");
+      const calId = input.calendar_id || "primary";
+      const event = {
+        summary: input.summary,
+        description: input.description || "",
+        start: { dateTime: input.start },
+        end: { dateTime: input.end },
+        attendees: (input.attendees || []).map((email: string) => ({ email })),
+      };
+      return await gw("google_calendar", `/calendar/v3/calendars/${encodeURIComponent(calId)}/events`, { method: "POST", body: JSON.stringify(event) }, GOOGLE_CALENDAR_API_KEY);
+    }
+    case "analytics_tracker": {
+      return { logged_at: new Date().toISOString(), event: input };
+    }
+    default: throw new Error(`Unknown tool: ${tool}`);
+  }
+}
+
+// ---------- Plan via AI ----------
+
+async function plan(profile: any, memory: any, objective: string, lastTrace: any) {
+  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
+  const userBlock = `
+BUSINESS_PROFILE: ${JSON.stringify(profile || {})}
+MEMORY_LOG: ${JSON.stringify(memory || {})}
+OBJECTIVE: ${objective || "(generic growth cycle — find leads, store, outreach)"}
+LAST_TRACE (most recent execution results, may be empty):
+${lastTrace ? JSON.stringify(lastTrace).slice(0, 6000) : "(none)"}
+`;
+  const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-pro",
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: userBlock },
+      ],
+    }),
+  });
+  if (r.status === 429) throw new Error("Rate limited — try again in a moment.");
+  if (r.status === 402) throw new Error("AI credits exhausted.");
+  if (!r.ok) throw new Error(`AI gateway ${r.status}: ${(await r.text()).slice(0, 300)}`);
+  const j = await r.json();
+  const content = j?.choices?.[0]?.message?.content || "{}";
+  try { return JSON.parse(content); } catch {
+    // attempt to extract JSON object
+    const m = content.match(/\{[\s\S]*\}/);
+    return m ? JSON.parse(m[0]) : { thought: content, tool_calls: [] };
+  }
+}
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  try {
+    const body = await req.json();
+    const { profile, memory, objective, last_trace, dry_run } = body;
+
+    const decision = await plan(profile, memory, objective, last_trace);
+    const calls = Array.isArray(decision.tool_calls) ? decision.tool_calls.slice(0, 8) : [];
+    const trace: any[] = [];
+
+    if (!dry_run) {
+      for (const c of calls) {
+        const start = Date.now();
+        try {
+          const data = await dispatch(c.tool, c.input || {});
+          trace.push({ tool: c.tool, action: c.action || "", ok: true, ms: Date.now() - start, data });
+        } catch (e) {
+          trace.push({ tool: c.tool, action: c.action || "", ok: false, ms: Date.now() - start, error: e instanceof Error ? e.message : "Unknown" });
+        }
+      }
+    }
+
+    return new Response(JSON.stringify({ decision, trace }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (e) {
+    console.error("aria-operator error", e);
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown" }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});

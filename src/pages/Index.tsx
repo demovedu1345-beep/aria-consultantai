@@ -5,17 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Onboarding } from "@/components/Onboarding";
 import { Dashboard } from "@/components/Dashboard";
 import { VoiceSession } from "@/components/VoiceSession";
+import { Operator } from "@/components/Operator";
 import {
   AriaState, BusinessProfile, SessionRecord,
   buildMemory, extractActions, loadState, resetState, saveState,
 } from "@/lib/aria-store";
-import { Loader2, Mic, RotateCw, Sparkles } from "lucide-react";
+import { Loader2, Mic, RotateCw, Sparkles, Zap, BarChart3 } from "lucide-react";
 
 export default function Index() {
   const [state, setState] = useState<AriaState>(() => loadState());
   const [loading, setLoading] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [mode, setMode] = useState<"advisor" | "operator">("advisor");
 
   useEffect(() => { saveState(state); }, [state]);
 
@@ -151,17 +153,33 @@ export default function Index() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <div className="flex rounded-full border border-border/60 p-0.5 mr-1">
+              <button
+                onClick={() => setMode("advisor")}
+                className={`text-[10px] uppercase tracking-[0.25em] px-3 py-1.5 rounded-full transition flex items-center gap-1.5 ${mode === "advisor" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                <BarChart3 className="h-3 w-3" /> Advisor
+              </button>
+              <button
+                onClick={() => setMode("operator")}
+                className={`text-[10px] uppercase tracking-[0.25em] px-3 py-1.5 rounded-full transition flex items-center gap-1.5 ${mode === "operator" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                <Zap className="h-3 w-3" /> Operator
+              </button>
+            </div>
             <Button variant="hero" onClick={() => setVoiceOpen(true)}>
               <Mic className="h-3.5 w-3.5" /> Voice
             </Button>
-            <Button variant="accent" size="sm" disabled={loading} onClick={newSession}>
-              {loading ? <Loader2 className="animate-spin" /> : <Sparkles className="h-4 w-4" />}
-              New session
-            </Button>
+            {mode === "advisor" && (
+              <Button variant="accent" size="sm" disabled={loading} onClick={newSession}>
+                {loading ? <Loader2 className="animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                New session
+              </Button>
+            )}
             <Button variant="ghost" size="icon" onClick={fullReset} title="Reset"><RotateCw className="h-4 w-4" /></Button>
           </div>
         </div>
-        {state.sessions.length > 1 && (
+        {mode === "advisor" && state.sessions.length > 1 && (
           <div className="max-w-5xl mx-auto px-6 pb-3 flex gap-2 overflow-x-auto">
             {state.sessions.slice().reverse().map((s, idx) => {
               const num = state.sessions.length - idx;
@@ -178,14 +196,24 @@ export default function Index() {
       </header>
 
       <div className="max-w-5xl mx-auto px-6 pt-10">
-        {loading && !activeSession && (
-          <div className="flex items-center gap-3 text-muted-foreground"><Loader2 className="animate-spin" /> Synthesizing…</div>
-        )}
-        {activeSession && (
-          <Dashboard
-            content={activeSession.content}
-            actionMarks={actionMarks}
-            onMarkAction={markAction}
+        {mode === "advisor" ? (
+          <>
+            {loading && !activeSession && (
+              <div className="flex items-center gap-3 text-muted-foreground"><Loader2 className="animate-spin" /> Synthesizing…</div>
+            )}
+            {activeSession && (
+              <Dashboard
+                content={activeSession.content}
+                actionMarks={actionMarks}
+                onMarkAction={markAction}
+              />
+            )}
+          </>
+        ) : (
+          <Operator
+            profile={state.profile}
+            state={state}
+            onTrace={() => { /* could persist cycles to localStorage */ }}
           />
         )}
       </div>
