@@ -17,6 +17,7 @@ export default function Index() {
   const [loading, setLoading] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [mode, setMode] = useState<"advisor" | "operator">("advisor");
 
   useEffect(() => { saveState(state); }, [state]);
 
