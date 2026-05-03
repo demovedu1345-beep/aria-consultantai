@@ -127,7 +127,6 @@ export default function Index() {
   if (!state.profile || state.sessions.length === 0) {
     return (
       <main className="min-h-screen">
-        <LoginHero />
         <Onboarding
           loading={loading}
           onSubmit={(p, web, social) =>
