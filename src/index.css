@@ -9,7 +9,7 @@
 @layer base {
   :root {
     /* Deep charcoal canvas */
-    --background: 30 8% 6%;
+    --background: 0 0% 3%;
     --foreground: 36 25% 90%;
 
     /* Slightly elevated surface */
@@ -72,9 +72,11 @@
     font-family: var(--font-body);
     font-feature-settings: "ss01", "cv11";
     -webkit-font-smoothing: antialiased;
+    background-color: hsl(0 0% 3%);
     background-image:
-      radial-gradient(ellipse 80% 50% at 50% -10%, hsl(40 55% 58% / 0.08), transparent 60%),
-      radial-gradient(ellipse 60% 40% at 90% 100%, hsl(40 55% 58% / 0.05), transparent 70%);
+      radial-gradient(ellipse 70% 60% at 95% 0%, hsl(0 0% 55% / 0.28), transparent 60%),
+      radial-gradient(ellipse 60% 50% at 85% 30%, hsl(0 0% 70% / 0.18), transparent 65%),
+      radial-gradient(ellipse 80% 60% at 0% 100%, hsl(0 0% 45% / 0.22), transparent 65%);
     background-attachment: fixed;
   }
 
