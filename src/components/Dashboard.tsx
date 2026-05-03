@@ -116,29 +116,59 @@ function renderActionSection(body: string, onMark?: (text: string, status: "comp
   );
 }
 
+function renderInline(text: string) {
+  // Convert **bold** and *italic* to JSX while stripping stray markers
+  const parts: (string | JSX.Element)[] = [];
+  const re = /\*\*(.+?)\*\*|\*(.+?)\*/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let key = 0;
+  while ((m = re.exec(text))) {
+    if (m.index > last) parts.push(text.slice(last, m.index));
+    if (m[1]) {
+      parts.push(
+        <strong key={key++} className="font-medium text-foreground tracking-tight">
+          {m[1].replace(/:$/, "")}
+          {m[1].endsWith(":") ? " — " : ""}
+        </strong>
+      );
+    } else if (m[2]) {
+      parts.push(<em key={key++} className="italic text-foreground/95">{m[2]}</em>);
+    }
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
 function renderProse(body: string) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {body.split(/\n\n+/).map((p, i) => {
         const lines = p.split("\n").filter(Boolean);
         const isList = lines.every((l) => /^([-•🔴🟡🟢🚩→✅⚠️🔄]|\d+[.)])/.test(l.trim()));
         if (isList) {
           return (
-            <ul key={i} className="space-y-2">
+            <ul key={i} className="space-y-2.5">
               {lines.map((l, j) => {
                 const clean = l.replace(/^([-•]|\d+[.)])\s*/, "").trim();
                 const flag = l.match(/^(🔴|🟡|🟢|🚩|→|✅|⚠️|🔄)/)?.[1];
+                const text = flag ? clean.replace(flag, "").trim() : clean;
                 return (
-                  <li key={j} className="flex gap-3 text-sm leading-relaxed">
-                    {flag ? <span className="shrink-0 mt-0.5">{flag}</span> : <span className="text-accent shrink-0 mt-2">·</span>}
-                    <span className="text-foreground/90">{flag ? clean.replace(flag, "").trim() : clean}</span>
+                  <li key={j} className="flex gap-3 text-[15px] leading-[1.7] text-foreground/80">
+                    <span className="shrink-0 mt-2 h-1 w-1 rounded-full bg-accent/70" />
+                    <span>{renderInline(text)}</span>
                   </li>
                 );
               })}
             </ul>
           );
         }
-        return <p key={i} className="text-sm leading-relaxed text-foreground/85">{p}</p>;
+        return (
+          <p key={i} className="text-[15px] leading-[1.75] text-foreground/80 first:first-letter:font-display first:first-letter:text-accent first:first-letter:text-2xl first:first-letter:mr-0.5">
+            {renderInline(p)}
+          </p>
+        );
       })}
     </div>
   );
@@ -156,21 +186,29 @@ export function Dashboard({ content, onMarkAction, actionMarks }: DashboardProps
   useEffect(() => { ref.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }, [content]);
 
   if (sections.length === 0) {
-    // fallback raw render
-    return <div className="aria-card p-6 whitespace-pre-wrap text-sm">{content}</div>;
+    return <div className="aria-card p-8 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground/80">{content}</div>;
   }
 
   return (
-    <div ref={ref} className="space-y-4">
+    <div ref={ref} className="space-y-5">
       {sections.map((s, i) => {
         const isScores = /HEALTH SCORES/i.test(s.title);
         const isActions = /ACTION PLAN/i.test(s.title);
+        const title = s.title.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
         return (
-          <article key={i} className="aria-card p-6 animate-fade-up" style={{ animationDelay: `${i * 80}ms` }}>
-            <header className="flex items-center gap-3 mb-4">
-              <span className="text-lg">{s.emoji}</span>
-              <h2 className="font-display text-xl tracking-tight">{s.title.toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}</h2>
-              <div className="flex-1 aria-divider ml-2" />
+          <article
+            key={i}
+            className="aria-card p-8 md:p-10 animate-fade-up"
+            style={{ animationDelay: `${i * 80}ms` }}
+          >
+            <header className="mb-6">
+              <div className="text-[10px] uppercase tracking-[0.32em] text-accent/80 mb-2">
+                § {String(i + 1).padStart(2, "0")}
+              </div>
+              <h2 className="font-display text-3xl md:text-[34px] leading-tight tracking-tight text-foreground">
+                {title}
+              </h2>
+              <div className="aria-divider mt-5" />
             </header>
             {isScores ? renderScoreSection(s.body)
               : isActions ? renderActionSection(s.body, onMarkAction, actionMarks)
