@@ -9,7 +9,7 @@
 @layer base {
   :root {
     /* Deep charcoal canvas */
-    --background: 30 8% 6%;
+    --background: 0 0% 3%;
     --foreground: 36 25% 90%;
 
     /* Slightly elevated surface */
