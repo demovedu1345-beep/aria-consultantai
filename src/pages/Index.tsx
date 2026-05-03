@@ -140,7 +140,7 @@ export default function Index() {
   // ===== DASHBOARD =====
   return (
     <main className="min-h-screen pb-24">
-      <header className="sticky top-0 z-30 backdrop-blur-xl bg-background/70 border-b border-border/50">
+      <header className="sticky top-0 z-30 backdrop-blur-xl bg-[hsl(0_0%_3%/0.55)] border-b border-white/5">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-full bg-gradient-to-br from-accent to-accent/40 flex items-center justify-center text-accent-foreground text-sm font-display">A</div>
