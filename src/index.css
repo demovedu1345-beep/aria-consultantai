@@ -2,130 +2,166 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ARIA — Premium Dark Consultant Design System
-   All colors HSL. Calm, expensive, restrained. Bone & gold over deep charcoal.
+/* ARIA — Premium Dark Portfolio Design System
+   Bone & cool blue gradient over deep near-black. Instrument Serif + Inter.
 */
 
 @layer base {
   :root {
-    /* Deep charcoal canvas */
-    --background: 0 0% 3%;
-    --foreground: 0 0% 95%;
+    /* New design tokens */
+    --bg: 0 0% 4%;
+    --surface: 0 0% 8%;
+    --text: 0 0% 96%;
+    --muted-fg: 0 0% 53%;
+    --stroke: 0 0% 12%;
+    --accent-blue-1: 210 40% 67%;
+    --accent-blue-2: 211 45% 53%;
 
-    /* Slightly elevated surface */
-    --card: 0 0% 6%;
-    --card-foreground: 0 0% 95%;
+    /* Map shadcn semantic tokens to new palette */
+    --background: 0 0% 4%;
+    --foreground: 0 0% 96%;
 
-    --popover: 0 0% 5%;
-    --popover-foreground: 0 0% 95%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 96%;
 
-    /* Bone — primary text/CTA on dark */
-    --primary: 0 0% 95%;
+    --popover: 0 0% 6%;
+    --popover-foreground: 0 0% 96%;
+
+    --primary: 0 0% 96%;
     --primary-foreground: 0 0% 6%;
 
     --secondary: 0 0% 10%;
     --secondary-foreground: 0 0% 90%;
 
     --muted: 0 0% 9%;
-    --muted-foreground: 0 0% 60%;
+    --muted-foreground: 0 0% 53%;
 
-    /* Antique gold accent */
-    --accent: 40 55% 58%;
-    --accent-foreground: 30 15% 8%;
+    --accent: 210 40% 67%;
+    --accent-foreground: 0 0% 6%;
 
     --destructive: 8 70% 55%;
-    --destructive-foreground: 0 0% 95%;
+    --destructive-foreground: 0 0% 96%;
 
     --warning: 38 90% 60%;
     --success: 150 45% 50%;
 
-    --border: 0 0% 14%;
+    --border: 0 0% 12%;
     --input: 0 0% 9%;
-    --ring: 40 55% 58%;
+    --ring: 210 40% 67%;
 
-    --radius: 0.25rem;
+    --radius: 0.5rem;
 
-    /* Semantic gradients */
-    --gradient-gold: linear-gradient(135deg, hsl(40 60% 62%), hsl(36 50% 45%));
-    --gradient-surface: linear-gradient(180deg, hsl(30 8% 9%), hsl(30 8% 6%));
-    --gradient-glow: radial-gradient(60% 50% at 50% 0%, hsl(40 55% 58% / 0.12), transparent 70%);
+    /* Gradients */
+    --accent-gradient: linear-gradient(90deg, #89AACC 0%, #4E85BF 100%);
+    --gradient-surface: linear-gradient(180deg, hsl(0 0% 9%), hsl(0 0% 6%));
 
     /* Shadows */
-    --shadow-soft: 0 1px 0 hsl(36 25% 95% / 0.04) inset, 0 24px 60px -30px hsl(0 0% 0% / 0.6);
-    --shadow-gold: 0 0 0 1px hsl(40 55% 58% / 0.3), 0 16px 40px -16px hsl(40 55% 58% / 0.35);
+    --shadow-soft: 0 1px 0 hsl(0 0% 100% / 0.04) inset, 0 24px 60px -30px hsl(0 0% 0% / 0.6);
+    --shadow-blue: 0 0 0 1px rgba(137,170,204,0.3), 0 16px 40px -16px rgba(78,133,191,0.45);
 
-    /* Typography scale */
-    --font-display: 'Cormorant Garamond', 'Playfair Display', ui-serif, Georgia, serif;
+    /* Typography */
+    --font-display: 'Instrument Serif', ui-serif, Georgia, serif;
     --font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, monospace;
   }
 
-  /* Force dark for ARIA — no light mode */
   html { color-scheme: dark; }
 
-  * {
-    @apply border-border;
-  }
+  * { @apply border-border; }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-bg text-text-primary;
     font-family: var(--font-body);
-    font-feature-settings: "ss01", "cv11";
     -webkit-font-smoothing: antialiased;
-    background-color: hsl(0 0% 3%);
-    background-image:
-      radial-gradient(ellipse 70% 60% at 95% 0%, hsl(0 0% 55% / 0.28), transparent 60%),
-      radial-gradient(ellipse 60% 50% at 85% 30%, hsl(0 0% 70% / 0.18), transparent 65%),
-      radial-gradient(ellipse 80% 60% at 0% 100%, hsl(0 0% 45% / 0.22), transparent 65%);
-    background-attachment: fixed;
   }
 
   h1, h2, h3, .font-display {
     font-family: var(--font-display);
-    font-weight: 500;
+    font-weight: 400;
     letter-spacing: -0.01em;
   }
 }
 
 @layer components {
-  .aria-rule {
-    @apply text-muted-foreground/40 select-none tracking-[0.3em] text-xs uppercase;
+  .accent-gradient {
+    background: var(--accent-gradient);
+  }
+  .accent-text {
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
   .aria-divider {
     height: 1px;
-    background: linear-gradient(90deg, transparent, hsl(var(--border)), transparent);
+    background: linear-gradient(90deg, transparent, hsl(var(--stroke)), transparent);
   }
   .aria-card {
-    @apply rounded-md border border-border/60 bg-card/80 backdrop-blur-sm;
+    @apply rounded-2xl border border-stroke bg-surface;
     box-shadow: var(--shadow-soft);
   }
   .aria-bar {
-    @apply h-1.5 w-full rounded-full bg-muted overflow-hidden;
+    @apply h-1.5 w-full rounded-full bg-stroke overflow-hidden;
   }
   .aria-bar > span {
     @apply block h-full;
-    background: var(--gradient-gold);
-  }
-  .aria-glow {
-    background: var(--gradient-glow);
+    background: var(--accent-gradient);
   }
   .aria-tag {
-    @apply inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-accent/30 bg-accent/5 text-accent text-[10px] tracking-[0.2em] uppercase;
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-stroke bg-surface text-muted text-[10px] tracking-[0.25em] uppercase;
+  }
+  .gradient-border {
+    position: relative;
+  }
+  .gradient-border::before {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    padding: 2px;
+    background: var(--accent-gradient);
+    background-size: 200% 200%;
+    animation: gradient-shift 6s ease infinite;
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+    pointer-events: none;
   }
 }
 
 @layer utilities {
   .text-balance { text-wrap: balance; }
+
+  @keyframes scroll-down {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(200%); }
+  }
+  .animate-scroll-down { animation: scroll-down 1.5s ease-in-out infinite; }
+
+  @keyframes role-fade-in {
+    0% { opacity: 0; transform: translateY(8px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  .animate-role-fade-in { animation: role-fade-in 0.4s ease-out; }
+
+  @keyframes gradient-shift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
   @keyframes pulse-ring {
     0%, 100% { transform: scale(1); opacity: 0.6; }
     50% { transform: scale(1.15); opacity: 1; }
   }
   .animate-pulse-ring { animation: pulse-ring 2s ease-in-out infinite; }
+
   @keyframes voice-wave {
     0%, 100% { transform: scaleY(0.3); }
     50% { transform: scaleY(1); }
   }
   .animate-voice-wave { animation: voice-wave 1.2s ease-in-out infinite; }
+
   @keyframes fade-up {
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
