@@ -116,40 +116,73 @@ export function VoiceSession({ open, onClose, buildPayload, onTranscript }: Prop
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-xl flex flex-col">
-      <header className="flex items-center justify-between p-6 border-b border-border/50">
-        <div>
-          <span className="aria-tag">Voice Session</span>
-          <h2 className="font-display text-2xl mt-2">Speak with ARIA</h2>
+    <div className="fixed inset-0 z-50 bg-bg/95 backdrop-blur-xl flex flex-col">
+      {/* Dashboard-style header */}
+      <header className="sticky top-0 z-30 backdrop-blur-xl bg-[hsl(0_0%_4%/0.7)] border-b border-stroke">
+        <div className="max-w-6xl mx-auto px-8 py-5 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-full bg-[hsl(0_0%_10%)] border border-stroke flex items-center justify-center text-sm font-display italic accent-text">A</div>
+            <div>
+              <div className="font-display text-lg leading-none tracking-tight">ARIA</div>
+              <div className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mt-1.5">Voice Session</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex rounded-full border border-stroke bg-surface/60 p-1">
+              <span className="text-[10px] uppercase tracking-[0.28em] px-4 py-1.5 rounded-full accent-gradient text-[hsl(0_0%_6%)] shadow-[0_4px_20px_-6px_rgba(137,170,204,0.55)] flex items-center gap-2">
+                <Mic className="h-3 w-3" /> Voice
+              </span>
+            </div>
+            <button
+              onClick={() => setTranscript([])}
+              className="relative inline-flex items-center gap-2 h-10 px-4 rounded-lg accent-gradient text-[hsl(0_0%_6%)] text-sm font-medium shadow-[0_8px_32px_-8px_rgba(137,170,204,0.6)] hover:shadow-[0_12px_40px_-8px_rgba(137,170,204,0.8)] transition-shadow"
+            >
+              New session
+            </button>
+            <button
+              onClick={onClose}
+              title="Close"
+              className="h-10 w-10 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface/60 transition"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
-        <Button variant="ghost" size="icon" onClick={onClose}><X /></Button>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-6 py-8 max-w-2xl mx-auto w-full space-y-6">
+      <div className="flex-1 overflow-y-auto px-6 py-10 max-w-3xl mx-auto w-full space-y-5">
         {transcript.length === 0 && (
-          <p className="text-muted-foreground text-center py-12 text-sm">
-            Press the mic and speak naturally. ARIA listens, thinks, then replies aloud.
-          </p>
-        )}
-        {transcript.map((m, i) => (
-          <div key={i} className={`animate-fade-up ${m.role === "user" ? "text-right" : ""}`}>
-            <div className="aria-tag mb-2">{m.role === "user" ? "You" : "ARIA"}</div>
-            <p className={`text-sm leading-relaxed ${m.role === "aria" ? "font-display text-lg text-foreground" : "text-muted-foreground"}`}>
-              {m.text}
+          <div className="aria-card p-8 md:p-10 text-center">
+            <div className="text-[10px] uppercase tracking-[0.32em] text-accent/80 mb-2">§ 00</div>
+            <h2 className="font-display text-3xl md:text-[34px] tracking-tight">Speak with ARIA</h2>
+            <div className="aria-divider my-5" />
+            <p className="text-[15px] leading-[1.75] text-foreground/70">
+              Press the mic and speak naturally. ARIA listens, thinks, then replies aloud.
             </p>
           </div>
+        )}
+        {transcript.map((m, i) => (
+          <article key={i} className="aria-card p-6 md:p-8 animate-fade-up">
+            <div className="text-[10px] uppercase tracking-[0.32em] text-accent/80 mb-2">
+              {m.role === "user" ? "You" : "ARIA"}
+            </div>
+            <div className="aria-divider mb-5" />
+            <p className={m.role === "aria" ? "font-display text-2xl text-foreground leading-snug" : "text-[15px] leading-[1.75] text-foreground/80"}>
+              {m.text}
+            </p>
+          </article>
         ))}
       </div>
 
-      <div className="p-8 flex flex-col items-center gap-4 border-t border-border/50">
+      <div className="p-8 flex flex-col items-center gap-4 border-t border-stroke bg-bg/60 backdrop-blur-xl">
         <div className="relative">
           {phase === "listening" && (
-            <span className="absolute inset-0 rounded-full bg-accent/30 animate-pulse-ring" />
+            <span className="absolute inset-0 rounded-full accent-gradient opacity-40 animate-pulse-ring" />
           )}
           <button
             disabled={phase === "thinking" || phase === "speaking"}
             onClick={() => (phase === "listening" ? stopListening() : startListening())}
-            className="relative h-20 w-20 rounded-full bg-accent text-accent-foreground flex items-center justify-center shadow-[0_20px_60px_-20px_hsl(40_55%_58%/0.6)] disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-110 transition"
+            className="relative h-20 w-20 rounded-full accent-gradient text-[hsl(0_0%_6%)] flex items-center justify-center shadow-[0_20px_60px_-16px_rgba(78,133,191,0.7)] disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-110 transition"
           >
             {phase === "thinking" || phase === "speaking" ? <Loader2 className="animate-spin" />
               : phase === "listening" ? <MicOff /> : <Mic />}
