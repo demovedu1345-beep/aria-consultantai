@@ -11,6 +11,7 @@ import {
   buildMemory, extractActions, loadState, resetState, saveState,
 } from "@/lib/aria-store";
 import { Loader2, Mic, RotateCw, Sparkles, Zap, BarChart3 } from "lucide-react";
+import { AppShell } from "@/components/AppShell";
 
 export default function Index() {
   const [state, setState] = useState<AriaState>(() => loadState());
