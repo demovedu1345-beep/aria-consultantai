@@ -28,23 +28,8 @@ export function Onboarding({ onSubmit, loading }: Props) {
   };
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-[hsl(0_0%_3%)]">
-      {/* Silk drape backdrop */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-1/3 -right-1/4 h-[140%] w-[80%] rotate-[18deg] bg-[radial-gradient(ellipse_at_center,hsl(0_0%_55%/0.35),transparent_60%)] blur-3xl" />
-        <div className="absolute top-1/4 -right-10 h-[90%] w-[60%] rotate-[28deg] bg-[radial-gradient(ellipse_at_center,hsl(0_0%_70%/0.22),transparent_65%)] blur-2xl" />
-        <div className="absolute -bottom-1/4 -left-1/4 h-[120%] w-[70%] -rotate-[18deg] bg-[radial-gradient(ellipse_at_center,hsl(0_0%_45%/0.28),transparent_65%)] blur-3xl" />
-      </div>
-
-      {/* Top nav */}
-      <div className="relative z-10 px-8 pt-7">
-        <button className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground/90 hover:text-foreground transition">
-          <ChevronLeft className="h-4 w-4" /> Home
-        </button>
-      </div>
-
-      {/* Centered card */}
-      <div className="relative z-10 flex min-h-[calc(100vh-80px)] items-center justify-center px-6">
+    <div className="relative w-full">
+      <div className="relative z-10 flex min-h-[calc(100vh-160px)] items-center justify-center px-6">
         <div className="w-full max-w-[420px] flex flex-col items-center text-center">
           {/* Logo */}
           <div className="mb-8 h-12 w-12 rounded-xl bg-[hsl(0_0%_8%)] border border-white/10 flex items-center justify-center shadow-[0_8px_24px_-8px_rgba(0,0,0,0.6)]">
