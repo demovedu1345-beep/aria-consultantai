@@ -140,42 +140,63 @@ export default function Index() {
   // ===== DASHBOARD =====
   return (
     <main className="min-h-screen pb-24">
-      <header className="sticky top-0 z-30 backdrop-blur-xl bg-[hsl(0_0%_3%/0.55)] border-b border-white/5">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-30 backdrop-blur-xl bg-[hsl(0_0%_4%/0.7)] border-b border-stroke">
+        <div className="max-w-6xl mx-auto px-8 py-5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-accent to-accent/40 flex items-center justify-center text-accent-foreground text-sm font-display">A</div>
+            <div className="h-9 w-9 rounded-full bg-[hsl(0_0%_10%)] border border-stroke flex items-center justify-center text-sm font-display italic accent-text">A</div>
             <div>
-              <div className="font-display text-lg leading-none">ARIA</div>
-              <div className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mt-1">
+              <div className="font-display text-lg leading-none tracking-tight">ARIA</div>
+              <div className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mt-1.5">
                 {state.profile.business_name}
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex rounded-full border border-border/60 p-0.5 mr-1">
+          <div className="flex items-center gap-3">
+            <div className="flex rounded-full border border-stroke bg-surface/60 p-1">
               <button
                 onClick={() => setMode("advisor")}
-                className={`text-[10px] uppercase tracking-[0.25em] px-3 py-1.5 rounded-full transition flex items-center gap-1.5 ${mode === "advisor" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                className={`text-[10px] uppercase tracking-[0.28em] px-4 py-1.5 rounded-full transition-all flex items-center gap-2 ${
+                  mode === "advisor"
+                    ? "accent-gradient text-[hsl(0_0%_6%)] shadow-[0_4px_20px_-6px_rgba(137,170,204,0.55)]"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
               >
                 <BarChart3 className="h-3 w-3" /> Advisor
               </button>
               <button
                 onClick={() => setMode("operator")}
-                className={`text-[10px] uppercase tracking-[0.25em] px-3 py-1.5 rounded-full transition flex items-center gap-1.5 ${mode === "operator" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                className={`text-[10px] uppercase tracking-[0.28em] px-4 py-1.5 rounded-full transition-all flex items-center gap-2 ${
+                  mode === "operator"
+                    ? "accent-gradient text-[hsl(0_0%_6%)] shadow-[0_4px_20px_-6px_rgba(137,170,204,0.55)]"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
               >
                 <Zap className="h-3 w-3" /> Operator
               </button>
             </div>
-            <Button variant="hero" onClick={() => setVoiceOpen(true)}>
+            <button
+              onClick={() => setVoiceOpen(true)}
+              className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-stroke bg-surface/60 text-[11px] uppercase tracking-[0.28em] text-foreground hover:border-accent/50 transition"
+            >
               <Mic className="h-3.5 w-3.5" /> Voice
-            </Button>
+            </button>
             {mode === "advisor" && (
-              <Button variant="accent" size="sm" disabled={loading} onClick={newSession}>
-                {loading ? <Loader2 className="animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              <button
+                disabled={loading}
+                onClick={newSession}
+                className="relative inline-flex items-center gap-2 h-10 px-4 rounded-lg accent-gradient text-[hsl(0_0%_6%)] text-sm font-medium shadow-[0_8px_32px_-8px_rgba(137,170,204,0.6)] hover:shadow-[0_12px_40px_-8px_rgba(137,170,204,0.8)] transition-shadow disabled:opacity-60"
+              >
+                {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
                 New session
-              </Button>
+              </button>
             )}
-            <Button variant="ghost" size="icon" onClick={fullReset} title="Reset"><RotateCw className="h-4 w-4" /></Button>
+            <button
+              onClick={fullReset}
+              title="Reset"
+              className="h-10 w-10 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface/60 transition"
+            >
+              <RotateCw className="h-4 w-4" />
+            </button>
           </div>
         </div>
         {mode === "advisor" && state.sessions.length > 1 && (
