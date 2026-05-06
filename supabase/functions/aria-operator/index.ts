@@ -212,11 +212,12 @@ serve(async (req) => {
     if (!dry_run) {
       for (const c of calls) {
         const start = Date.now();
+        const meta = { reason: c.reason || "", expected_outcome: c.expected_outcome || "" };
         try {
           const data = await dispatch(c.tool, c.input || {});
-          trace.push({ tool: c.tool, action: c.action || "", ok: true, ms: Date.now() - start, data });
+          trace.push({ tool: c.tool, action: c.action || "", ok: true, ms: Date.now() - start, data, ...meta });
         } catch (e) {
-          trace.push({ tool: c.tool, action: c.action || "", ok: false, ms: Date.now() - start, error: e instanceof Error ? e.message : "Unknown" });
+          trace.push({ tool: c.tool, action: c.action || "", ok: false, ms: Date.now() - start, error: e instanceof Error ? e.message : "Unknown", ...meta });
         }
       }
     }
