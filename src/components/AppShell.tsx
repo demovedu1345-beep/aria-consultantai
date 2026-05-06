@@ -35,7 +35,7 @@ export function AppShell({ children, rightSlot }: Props) {
 
   return (
     <div className="relative min-h-screen w-full bg-bg text-text-primary">
-      {/* Cinematic video backdrop — fixed so it persists behind all content */}
+      {/* Cinematic video backdrop — identical to landing Hero */}
       <div className="fixed inset-0 -z-10 overflow-hidden">
         <video
           ref={videoRef}
@@ -43,10 +43,11 @@ export function AppShell({ children, rightSlot }: Props) {
           muted
           loop
           playsInline
-          className="absolute top-1/2 left-1/2 min-w-full min-h-full -translate-x-1/2 -translate-y-1/2 object-cover opacity-60"
+          className="absolute top-1/2 left-1/2 min-w-full min-h-full -translate-x-1/2 -translate-y-1/2 object-cover"
         />
-        <div className="absolute inset-0 bg-bg/70" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,transparent,hsl(var(--bg))_70%)]" />
+        <div className="absolute inset-0 bg-black/40" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,hsl(var(--bg))_85%)]" />
+        <div className="absolute bottom-0 inset-x-0 h-64 bg-gradient-to-t from-bg via-bg/60 to-transparent" />
       </div>
 
       {/* Landing-style floating nav */}
