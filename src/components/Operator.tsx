@@ -90,24 +90,31 @@ export function Operator({ profile, state, onTrace }: Props) {
 
   return (
     <div className="space-y-6">
-      <Card className="p-5 bg-card/50 border-border/60">
+      <div className="aria-card p-6 md:p-8 backdrop-blur-xl bg-surface/60">
         <div className="flex items-center gap-2 mb-3">
-          <Zap className="h-4 w-4 text-accent" />
+          <Zap className="h-4 w-4 accent-text" />
           <span className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">Operator Objective</span>
         </div>
         <Textarea
           value={objective}
           onChange={(e) => setObjective(e.target.value)}
           rows={3}
-          className="bg-background/60 border-border/60 text-sm font-mono"
+          className="bg-bg/60 border-stroke text-sm font-mono"
           placeholder="What should ARIA execute this cycle?"
         />
         <div className="flex flex-wrap items-center gap-2 mt-4">
-          <Button variant="accent" size="sm" disabled={running} onClick={() => runOnce()}>
-            {running ? <Loader2 className="animate-spin h-4 w-4" /> : <Play className="h-4 w-4" />}
-            Run cycle
-          </Button>
-          <Button variant="outline" size="sm" disabled={running} onClick={() => runOnce({ dry: true })}>
+          <button
+            disabled={running}
+            onClick={() => runOnce()}
+            className="relative group rounded-full disabled:opacity-50"
+          >
+            <span className="absolute -inset-[2px] rounded-full accent-gradient" />
+            <span className="relative inline-flex items-center gap-2 bg-text-primary text-bg rounded-full px-5 py-2.5 text-sm">
+              {running ? <Loader2 className="animate-spin h-4 w-4" /> : <Play className="h-4 w-4" />}
+              Run cycle
+            </span>
+          </button>
+          <Button variant="outline" size="sm" disabled={running} onClick={() => runOnce({ dry: true })} className="border-stroke bg-bg/60">
             Plan only (dry run)
           </Button>
           <Button
@@ -117,9 +124,9 @@ export function Operator({ profile, state, onTrace }: Props) {
           >
             {auto ? <><Pause className="h-4 w-4" /> Stop autonomous loop</> : <>Start autonomous loop</>}
           </Button>
-          {auto && <span className="text-[10px] uppercase tracking-[0.3em] text-accent animate-pulse">● live</span>}
+          {auto && <span className="text-[10px] uppercase tracking-[0.3em] accent-text animate-pulse">● live</span>}
         </div>
-      </Card>
+      </div>
 
       {cycles.length === 0 && !running && (
         <p className="text-sm text-muted-foreground italic">No cycles yet. Run one to see ARIA think and execute.</p>
@@ -127,37 +134,63 @@ export function Operator({ profile, state, onTrace }: Props) {
 
       <div className="space-y-4">
         {cycles.map((c, idx) => (
-          <Card key={c.id} className="p-5 bg-card/40 border-border/60">
-            <div className="flex items-center justify-between mb-3">
+          <article key={c.id} className="aria-card p-6 md:p-8 backdrop-blur-xl bg-surface/60 animate-fade-up">
+            <header className="flex items-center justify-between mb-4">
               <div className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
                 Cycle {String(cycles.length - idx).padStart(2, "0")} · {new Date(c.at).toLocaleTimeString()}
               </div>
-              <div className="text-[10px] text-muted-foreground">{c.trace.length} tool call(s)</div>
-            </div>
-            {c.decision.thought && (
-              <p className="font-display italic text-lg text-accent/90 mb-3 leading-snug">"{c.decision.thought}"</p>
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.25em]">
+                {c.decision.confidence && (
+                  <span className="px-2 py-1 rounded-full border border-stroke text-muted-foreground">
+                    {c.decision.confidence} confidence
+                  </span>
+                )}
+                <span className="text-muted-foreground">{c.trace.length} call(s)</span>
+              </div>
+            </header>
+
+            {c.decision.bottleneck && (
+              <div className="mb-3">
+                <div className="text-[10px] uppercase tracking-[0.3em] accent-text mb-1">Bottleneck</div>
+                <p className="text-sm text-text-primary">{c.decision.bottleneck}</p>
+              </div>
             )}
+            {c.decision.thought && (
+              <p className="font-display italic text-lg accent-text mb-4 leading-snug">"{c.decision.thought}"</p>
+            )}
+            <div className="aria-divider mb-4" />
+
             {c.decision.fallback && (
-              <Card className="p-3 mb-3 bg-background/60 border-dashed border-accent/40">
-                <div className="text-[10px] uppercase tracking-[0.3em] text-accent mb-2">Fallback</div>
-                <pre className="text-xs whitespace-pre-wrap text-foreground/90">{c.decision.fallback}</pre>
-              </Card>
+              <div className="aria-card p-4 mb-4 bg-bg/50 border-dashed">
+                <div className="text-[10px] uppercase tracking-[0.3em] accent-text mb-2">Deployable fallback</div>
+                <pre className="text-xs whitespace-pre-wrap text-text-primary/90 font-mono">{c.decision.fallback}</pre>
+              </div>
             )}
             <div className="space-y-2">
               {c.trace.map((t, i) => (
-                <div key={i} className="border border-border/40 rounded-md p-3 bg-background/40">
+                <div key={i} className="border border-stroke rounded-md p-3 bg-bg/50">
                   <div className="flex items-center gap-2 text-xs">
                     {t.ok ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> : <XCircle className="h-3.5 w-3.5 text-red-400" />}
-                    <span className="font-mono text-accent">{t.tool}</span>
+                    <span className="font-mono accent-text">{t.tool}</span>
                     <ChevronRight className="h-3 w-3 text-muted-foreground" />
                     <span className="text-muted-foreground">{t.action || ""}</span>
                     <span className="ml-auto text-[10px] text-muted-foreground">{t.ms}ms</span>
                   </div>
+                  {t.reason && (
+                    <div className="text-[11px] text-text-primary/80 mt-2">
+                      <span className="text-muted-foreground uppercase tracking-[0.25em] text-[9px]">Reason · </span>{t.reason}
+                    </div>
+                  )}
+                  {t.expected_outcome && (
+                    <div className="text-[11px] text-text-primary/70 mt-1">
+                      <span className="text-muted-foreground uppercase tracking-[0.25em] text-[9px]">Expected · </span>{t.expected_outcome}
+                    </div>
+                  )}
                   {t.error && <div className="text-[11px] text-red-300 mt-2 font-mono">{t.error}</div>}
                   {t.ok && t.data !== undefined && (
                     <details className="mt-2">
-                      <summary className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground cursor-pointer">result</summary>
-                      <pre className="text-[11px] mt-2 max-h-64 overflow-auto bg-background/60 p-2 rounded">{JSON.stringify(t.data, null, 2).slice(0, 4000)}</pre>
+                      <summary className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground cursor-pointer">verified result</summary>
+                      <pre className="text-[11px] mt-2 max-h-64 overflow-auto bg-bg/60 p-2 rounded">{JSON.stringify(t.data, null, 2).slice(0, 4000)}</pre>
                     </details>
                   )}
                 </div>
@@ -167,9 +200,9 @@ export function Operator({ profile, state, onTrace }: Props) {
               )}
             </div>
             {c.decision.next && (
-              <p className="text-[11px] text-muted-foreground mt-3 italic">Next → {c.decision.next}</p>
+              <p className="text-[11px] text-muted-foreground mt-4 italic">Next → {c.decision.next}</p>
             )}
-          </Card>
+          </article>
         ))}
       </div>
     </div>
