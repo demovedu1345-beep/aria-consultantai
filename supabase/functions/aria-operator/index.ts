@@ -12,54 +12,76 @@ const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY") || "";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 const HUBSPOT_API_KEY = Deno.env.get("HUBSPOT_API_KEY") || "";
 const GOOGLE_CALENDAR_API_KEY = Deno.env.get("GOOGLE_CALENDAR_API_KEY") || "";
+const SLACK_API_KEY = Deno.env.get("SLACK_API_KEY") || "";
+const PERPLEXITY_API_KEY = Deno.env.get("PERPLEXITY_API_KEY") || "";
+const TAVILY_API_KEY = Deno.env.get("TAVILY_API_KEY") || "";
+const HUNTER_API_KEY = Deno.env.get("HUNTER_API_KEY") || "";
+const APOLLO_API_KEY = Deno.env.get("APOLLO_API_KEY") || "";
+const APIFY_API_TOKEN = Deno.env.get("APIFY_API_TOKEN") || "";
+const UNIPILE_API_KEY = Deno.env.get("UNIPILE_API_KEY") || "";
+const UNIPILE_DSN = Deno.env.get("UNIPILE_DSN") || "";
 
 const GATEWAY = "https://connector-gateway.lovable.dev";
 
-// ---------- V4 system prompt ----------
+// ---------- V6 system prompt ----------
 const SYSTEM_PROMPT = `You are ARIA — Autonomous Revenue Operator V6.
 
-You don't advise. You execute real-world actions using real tools and return real, verifiable results. Every action must be traceable to revenue inside 7 days.
+You don't advise. You execute. Every action traceable to revenue inside 7 days, every claim backed by real tool output. Never invent leads, emails, replies, or metrics.
 
-CORE PRINCIPLES
-- Genuine results only. Never invent data, leads, emails, or events. If you don't have evidence, search/scrape first to obtain it.
-- Every tool call must carry an explicit "reason" (why this unblocks revenue NOW) and "expected_outcome" (measurable signal after results return).
-- Chain tools: search → scrape → validate → store → outreach → track. Never store or email without a verified source.
-- Re-plan from results. If a previous trace failed or returned weak data, diagnose in "thought" and pivot — never repeat a failed call verbatim.
-- Max 8 tool_calls per cycle. Cheap discovery first, expensive write actions last.
+CORE
+- Genuine results only. If evidence is missing, search/scrape/enrich first; never fabricate.
+- Every tool_call carries "reason" (why this unblocks revenue now) and "expected_outcome" (concrete measurable signal).
+- Chain: research -> enrich -> verify -> store -> outreach -> notify -> track. Never email an unverified address.
+- Re-plan from results. If last_trace failed or returned weak data, diagnose in "thought" and pivot. Never repeat a failed call verbatim.
+- Max 8 tool_calls per cycle. Cheap discovery first; writes (email, DM, CRM) last.
+- Confidence HIGH/MED/LOW on the decision.
 
-AVAILABLE TOOLS (use names EXACTLY)
-- google_search        { query, limit? }
-- linkedin_search      { query, limit? }
-- web_scraper          { url }
-- email_sender         { to, subject, html?, text?, from? }
-- crm_create_lead      { email, firstname?, lastname?, company?, phone?, website?, notes? }
-- crm_update_status    { contact_id, lifecyclestage?, hs_lead_status?, notes? }
-- calendar_book        { summary, description?, start, end, attendees? }
-- analytics_tracker    { event, props? }
+AVAILABLE TOOLS (names EXACT)
+Research / intel
+- perplexity_research { query, recency?, mode? }   deep web research with citations
+- tavily_search       { query, depth?, limit? }    high-signal structured web search
+- google_search       { query, limit? }            Firecrawl SERP
+- linkedin_search     { query, limit? }            Firecrawl LinkedIn filter
+- web_scraper         { url }                      Firecrawl markdown + emails
+
+Lead data / enrichment
+- apollo_people       { titles?, company_domains?, keywords?, limit? }
+- apollo_enrich       { email?, first_name?, last_name?, company_domain? }
+- hunter_find_email   { domain, first_name, last_name }
+- hunter_domain       { domain, limit? }
+- apify_run_actor     { actor_id, input }          run any Apify actor
+
+Outreach / write
+- email_sender        { to, subject, html?, text?, from? }
+- linkedin_dm         { account_id, recipient_url, text }
+- linkedin_invite     { account_id, recipient_url, message? }
+- slack_notify        { channel, text }            post to Slack (alerts, hot leads, digest)
+
+CRM / calendar / analytics
+- crm_create_lead     { email, firstname?, lastname?, company?, phone?, website?, notes? }
+- crm_update_status   { contact_id, lifecyclestage?, hs_lead_status?, notes? }
+- calendar_book       { summary, description?, start, end, attendees? }
+- analytics_tracker   { event, props? }
 
 SAFETY
-- Only email addresses confirmed by web_scraper or explicitly provided by the user.
-- Personalize every outreach using scraped context.
-- Never send the same email twice.
+- Only email addresses confirmed by hunter_find_email (score >= 70), apollo_enrich, web_scraper, or explicitly provided.
+- Every outreach personalised using scraped/research context.
+- Never send the same email/DM twice (check memory).
+- Slack-notify the founder on every hot lead, every reply, and the cycle summary.
 
 OUTPUT — STRICT JSON ONLY:
 {
-  "thought": "diagnosis + chosen move (reference last_trace if present)",
+  "thought": "diagnosis + chosen move (reference last_trace, cite evidence)",
   "bottleneck": "single revenue bottleneck this cycle attacks",
   "tool_calls": [
-    {
-      "tool": "<tool_name>",
-      "action": "<short label>",
-      "reason": "<why this call unblocks revenue now>",
-      "expected_outcome": "<concrete signal that proves it worked>",
-      "input": { ... }
-    }
+    { "tool": "<name>", "action": "<label>", "reason": "<why now>", "expected_outcome": "<signal>", "input": { } }
   ],
-  "fallback": "exact deployable copy if no tool fits",
+  "fallback": "exact deployable copy/script if no tool fits",
   "next": "what you will do once results return",
   "confidence": "HIGH | MED | LOW"
 }
 `;
+
 
 // ---------- Tool dispatch (mirrors aria-execute) ----------
 
@@ -159,6 +181,168 @@ async function dispatch(tool: string, input: Record<string, any>) {
     }
     case "analytics_tracker": {
       return { logged_at: new Date().toISOString(), event: input };
+    }
+    case "perplexity_research": {
+      if (!PERPLEXITY_API_KEY) throw new Error("PERPLEXITY_API_KEY missing");
+      const body: any = {
+        model: "sonar-pro",
+        messages: [
+          { role: "system", content: "Be precise, factual, cite sources." },
+          { role: "user", content: String(input.query || "") },
+        ],
+      };
+      if (input.recency) body.search_recency_filter = String(input.recency);
+      if (input.mode && input.mode !== "default") body.search_mode = String(input.mode);
+      const r = await fetch("https://api.perplexity.ai/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${PERPLEXITY_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(`perplexity ${r.status}: ${JSON.stringify(d).slice(0, 400)}`);
+      return { answer: d?.choices?.[0]?.message?.content || "", citations: d?.citations || [] };
+    }
+    case "tavily_search": {
+      if (!TAVILY_API_KEY) throw new Error("TAVILY_API_KEY missing");
+      const r = await fetch("https://api.tavily.com/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          api_key: TAVILY_API_KEY,
+          query: String(input.query || ""),
+          search_depth: input.depth || "basic",
+          max_results: Math.min(Number(input.limit || 8), 20),
+          include_answer: true,
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(`tavily ${r.status}: ${JSON.stringify(d).slice(0, 400)}`);
+      return { answer: d.answer || "", results: (d.results || []).map((x: any) => ({ title: x.title, url: x.url, snippet: x.content })) };
+    }
+    case "hunter_find_email": {
+      if (!HUNTER_API_KEY) throw new Error("HUNTER_API_KEY missing");
+      const p = new URLSearchParams({
+        domain: String(input.domain || ""),
+        first_name: String(input.first_name || ""),
+        last_name: String(input.last_name || ""),
+        api_key: HUNTER_API_KEY,
+      });
+      const r = await fetch(`https://api.hunter.io/v2/email-finder?${p}`);
+      const d = await r.json();
+      if (!r.ok) throw new Error(`hunter ${r.status}: ${JSON.stringify(d).slice(0, 300)}`);
+      return d.data;
+    }
+    case "hunter_domain": {
+      if (!HUNTER_API_KEY) throw new Error("HUNTER_API_KEY missing");
+      const p = new URLSearchParams({
+        domain: String(input.domain || ""),
+        limit: String(input.limit || 10),
+        api_key: HUNTER_API_KEY,
+      });
+      const r = await fetch(`https://api.hunter.io/v2/domain-search?${p}`);
+      const d = await r.json();
+      if (!r.ok) throw new Error(`hunter ${r.status}: ${JSON.stringify(d).slice(0, 300)}`);
+      return d.data;
+    }
+    case "apollo_people": {
+      if (!APOLLO_API_KEY) throw new Error("APOLLO_API_KEY missing");
+      const body: any = {
+        api_key: APOLLO_API_KEY,
+        page: 1,
+        per_page: Math.min(Number(input.limit || 10), 25),
+      };
+      if (input.titles) body.person_titles = input.titles;
+      if (input.company_domains) body.q_organization_domains = (input.company_domains as string[]).join("\n");
+      if (input.keywords) body.q_keywords = input.keywords;
+      const r = await fetch("https://api.apollo.io/api/v1/mixed_people/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Api-Key": APOLLO_API_KEY, "Cache-Control": "no-cache" },
+        body: JSON.stringify(body),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(`apollo ${r.status}: ${JSON.stringify(d).slice(0, 300)}`);
+      const people = (d.people || []).map((p: any) => ({
+        name: p.name, title: p.title, company: p.organization?.name,
+        domain: p.organization?.primary_domain, linkedin: p.linkedin_url, email: p.email,
+      }));
+      return { people, total: d.pagination?.total_entries };
+    }
+    case "apollo_enrich": {
+      if (!APOLLO_API_KEY) throw new Error("APOLLO_API_KEY missing");
+      const r = await fetch("https://api.apollo.io/api/v1/people/match", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Api-Key": APOLLO_API_KEY, "Cache-Control": "no-cache" },
+        body: JSON.stringify({
+          api_key: APOLLO_API_KEY,
+          email: input.email, first_name: input.first_name, last_name: input.last_name,
+          domain: input.company_domain, reveal_personal_emails: false,
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(`apollo ${r.status}: ${JSON.stringify(d).slice(0, 300)}`);
+      return d.person || d;
+    }
+    case "apify_run_actor": {
+      if (!APIFY_API_TOKEN) throw new Error("APIFY_API_TOKEN missing");
+      const actor = String(input.actor_id || "").replace("/", "~");
+      const r = await fetch(`https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${APIFY_API_TOKEN}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input.input || {}),
+      });
+      const text = await r.text();
+      let d: any; try { d = JSON.parse(text); } catch { d = text; }
+      if (!r.ok) throw new Error(`apify ${r.status}: ${typeof d === "string" ? d.slice(0, 300) : JSON.stringify(d).slice(0, 300)}`);
+      return { items: Array.isArray(d) ? d.slice(0, 50) : d };
+    }
+    case "slack_notify": {
+      if (!SLACK_API_KEY) throw new Error("SLACK_API_KEY missing");
+      const r = await fetch(`${GATEWAY}/slack/api/chat.postMessage`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "X-Connection-Api-Key": SLACK_API_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          channel: String(input.channel || "#general"),
+          text: String(input.text || ""),
+          ...(input.blocks ? { blocks: input.blocks } : {}),
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok || !d.ok) throw new Error(`slack ${r.status}: ${JSON.stringify(d).slice(0, 300)}`);
+      return { ts: d.ts, channel: d.channel };
+    }
+    case "linkedin_dm": {
+      if (!UNIPILE_API_KEY || !UNIPILE_DSN) throw new Error("UNIPILE_API_KEY/UNIPILE_DSN missing");
+      const r = await fetch(`https://${UNIPILE_DSN}/api/v1/chats`, {
+        method: "POST",
+        headers: { "X-API-KEY": UNIPILE_API_KEY, "Content-Type": "application/json", accept: "application/json" },
+        body: JSON.stringify({
+          account_id: input.account_id,
+          attendees_ids: input.recipient_url ? [String(input.recipient_url)] : [String(input.provider_id)],
+          text: String(input.text || ""),
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(`unipile dm ${r.status}: ${JSON.stringify(d).slice(0, 300)}`);
+      return d;
+    }
+    case "linkedin_invite": {
+      if (!UNIPILE_API_KEY || !UNIPILE_DSN) throw new Error("UNIPILE_API_KEY/UNIPILE_DSN missing");
+      const r = await fetch(`https://${UNIPILE_DSN}/api/v1/users/invite`, {
+        method: "POST",
+        headers: { "X-API-KEY": UNIPILE_API_KEY, "Content-Type": "application/json", accept: "application/json" },
+        body: JSON.stringify({
+          account_id: input.account_id,
+          provider_id: input.recipient_url,
+          message: input.message || "",
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(`unipile invite ${r.status}: ${JSON.stringify(d).slice(0, 300)}`);
+      return d;
     }
     default: throw new Error(`Unknown tool: ${tool}`);
   }
