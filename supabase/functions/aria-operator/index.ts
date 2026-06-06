@@ -182,6 +182,168 @@ async function dispatch(tool: string, input: Record<string, any>) {
     case "analytics_tracker": {
       return { logged_at: new Date().toISOString(), event: input };
     }
+    case "perplexity_research": {
+      if (!PERPLEXITY_API_KEY) throw new Error("PERPLEXITY_API_KEY missing");
+      const body: any = {
+        model: "sonar-pro",
+        messages: [
+          { role: "system", content: "Be precise, factual, cite sources." },
+          { role: "user", content: String(input.query || "") },
+        ],
+      };
+      if (input.recency) body.search_recency_filter = String(input.recency);
+      if (input.mode && input.mode !== "default") body.search_mode = String(input.mode);
+      const r = await fetch("https://api.perplexity.ai/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${PERPLEXITY_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(`perplexity ${r.status}: ${JSON.stringify(d).slice(0, 400)}`);
+      return { answer: d?.choices?.[0]?.message?.content || "", citations: d?.citations || [] };
+    }
+    case "tavily_search": {
+      if (!TAVILY_API_KEY) throw new Error("TAVILY_API_KEY missing");
+      const r = await fetch("https://api.tavily.com/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          api_key: TAVILY_API_KEY,
+          query: String(input.query || ""),
+          search_depth: input.depth || "basic",
+          max_results: Math.min(Number(input.limit || 8), 20),
+          include_answer: true,
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(`tavily ${r.status}: ${JSON.stringify(d).slice(0, 400)}`);
+      return { answer: d.answer || "", results: (d.results || []).map((x: any) => ({ title: x.title, url: x.url, snippet: x.content })) };
+    }
+    case "hunter_find_email": {
+      if (!HUNTER_API_KEY) throw new Error("HUNTER_API_KEY missing");
+      const p = new URLSearchParams({
+        domain: String(input.domain || ""),
+        first_name: String(input.first_name || ""),
+        last_name: String(input.last_name || ""),
+        api_key: HUNTER_API_KEY,
+      });
+      const r = await fetch(`https://api.hunter.io/v2/email-finder?${p}`);
+      const d = await r.json();
+      if (!r.ok) throw new Error(`hunter ${r.status}: ${JSON.stringify(d).slice(0, 300)}`);
+      return d.data;
+    }
+    case "hunter_domain": {
+      if (!HUNTER_API_KEY) throw new Error("HUNTER_API_KEY missing");
+      const p = new URLSearchParams({
+        domain: String(input.domain || ""),
+        limit: String(input.limit || 10),
+        api_key: HUNTER_API_KEY,
+      });
+      const r = await fetch(`https://api.hunter.io/v2/domain-search?${p}`);
+      const d = await r.json();
+      if (!r.ok) throw new Error(`hunter ${r.status}: ${JSON.stringify(d).slice(0, 300)}`);
+      return d.data;
+    }
+    case "apollo_people": {
+      if (!APOLLO_API_KEY) throw new Error("APOLLO_API_KEY missing");
+      const body: any = {
+        api_key: APOLLO_API_KEY,
+        page: 1,
+        per_page: Math.min(Number(input.limit || 10), 25),
+      };
+      if (input.titles) body.person_titles = input.titles;
+      if (input.company_domains) body.q_organization_domains = (input.company_domains as string[]).join("\n");
+      if (input.keywords) body.q_keywords = input.keywords;
+      const r = await fetch("https://api.apollo.io/api/v1/mixed_people/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Api-Key": APOLLO_API_KEY, "Cache-Control": "no-cache" },
+        body: JSON.stringify(body),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(`apollo ${r.status}: ${JSON.stringify(d).slice(0, 300)}`);
+      const people = (d.people || []).map((p: any) => ({
+        name: p.name, title: p.title, company: p.organization?.name,
+        domain: p.organization?.primary_domain, linkedin: p.linkedin_url, email: p.email,
+      }));
+      return { people, total: d.pagination?.total_entries };
+    }
+    case "apollo_enrich": {
+      if (!APOLLO_API_KEY) throw new Error("APOLLO_API_KEY missing");
+      const r = await fetch("https://api.apollo.io/api/v1/people/match", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Api-Key": APOLLO_API_KEY, "Cache-Control": "no-cache" },
+        body: JSON.stringify({
+          api_key: APOLLO_API_KEY,
+          email: input.email, first_name: input.first_name, last_name: input.last_name,
+          domain: input.company_domain, reveal_personal_emails: false,
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(`apollo ${r.status}: ${JSON.stringify(d).slice(0, 300)}`);
+      return d.person || d;
+    }
+    case "apify_run_actor": {
+      if (!APIFY_API_TOKEN) throw new Error("APIFY_API_TOKEN missing");
+      const actor = String(input.actor_id || "").replace("/", "~");
+      const r = await fetch(`https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${APIFY_API_TOKEN}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input.input || {}),
+      });
+      const text = await r.text();
+      let d: any; try { d = JSON.parse(text); } catch { d = text; }
+      if (!r.ok) throw new Error(`apify ${r.status}: ${typeof d === "string" ? d.slice(0, 300) : JSON.stringify(d).slice(0, 300)}`);
+      return { items: Array.isArray(d) ? d.slice(0, 50) : d };
+    }
+    case "slack_notify": {
+      if (!SLACK_API_KEY) throw new Error("SLACK_API_KEY missing");
+      const r = await fetch(`${GATEWAY}/slack/api/chat.postMessage`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "X-Connection-Api-Key": SLACK_API_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          channel: String(input.channel || "#general"),
+          text: String(input.text || ""),
+          ...(input.blocks ? { blocks: input.blocks } : {}),
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok || !d.ok) throw new Error(`slack ${r.status}: ${JSON.stringify(d).slice(0, 300)}`);
+      return { ts: d.ts, channel: d.channel };
+    }
+    case "linkedin_dm": {
+      if (!UNIPILE_API_KEY || !UNIPILE_DSN) throw new Error("UNIPILE_API_KEY/UNIPILE_DSN missing");
+      const r = await fetch(`https://${UNIPILE_DSN}/api/v1/chats`, {
+        method: "POST",
+        headers: { "X-API-KEY": UNIPILE_API_KEY, "Content-Type": "application/json", accept: "application/json" },
+        body: JSON.stringify({
+          account_id: input.account_id,
+          attendees_ids: input.recipient_url ? [String(input.recipient_url)] : [String(input.provider_id)],
+          text: String(input.text || ""),
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(`unipile dm ${r.status}: ${JSON.stringify(d).slice(0, 300)}`);
+      return d;
+    }
+    case "linkedin_invite": {
+      if (!UNIPILE_API_KEY || !UNIPILE_DSN) throw new Error("UNIPILE_API_KEY/UNIPILE_DSN missing");
+      const r = await fetch(`https://${UNIPILE_DSN}/api/v1/users/invite`, {
+        method: "POST",
+        headers: { "X-API-KEY": UNIPILE_API_KEY, "Content-Type": "application/json", accept: "application/json" },
+        body: JSON.stringify({
+          account_id: input.account_id,
+          provider_id: input.recipient_url,
+          message: input.message || "",
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(`unipile invite ${r.status}: ${JSON.stringify(d).slice(0, 300)}`);
+      return d;
+    }
     default: throw new Error(`Unknown tool: ${tool}`);
   }
 }
