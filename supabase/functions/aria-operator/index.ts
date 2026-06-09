@@ -145,11 +145,30 @@ async function dispatch(tool: string, input: Record<string, any>) {
     case "email_sender": {
       if (!RESEND_API_KEY) throw new Error("RESEND_API_KEY missing");
       if (!input.to || !input.subject || (!input.html && !input.text)) throw new Error("email_sender requires to, subject, html|text");
+      const EMAIL_RE = /^[^\s@<>"']+@[^\s@<>"',;]+\.[^\s@<>"',;]+$/;
+      const ALLOWED_FROM = ["resend.dev"];
+      const to = String(input.to).trim();
+      if (to.length > 254 || !EMAIL_RE.test(to)) throw new Error("Invalid recipient email");
+      const subject = String(input.subject).slice(0, 200);
+      const rawHtml = input.html ? String(input.html).slice(0, 20_000) : "";
+      const rawText = input.text ? String(input.text).slice(0, 20_000) : "";
+      const sanitize = (h: string) => h
+        .replace(/<\s*(script|iframe|object|embed|link|meta)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, "")
+        .replace(/<\s*(script|iframe|object|embed|link|meta)[^>]*>/gi, "")
+        .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+        .replace(/javascript:/gi, "");
+      let from = "ARIA <onboarding@resend.dev>";
+      if (input.from) {
+        const m = String(input.from).match(/<([^>]+)>|([^\s<>]+@[^\s<>]+)/);
+        const addr = (m?.[1] || m?.[2] || "").toLowerCase();
+        const domain = addr.split("@")[1] || "";
+        if (EMAIL_RE.test(addr) && ALLOWED_FROM.some((d) => domain === d || domain.endsWith("." + d))) from = String(input.from);
+      }
       const body = {
-        from: input.from || "ARIA <onboarding@resend.dev>",
-        to: [input.to],
-        subject: input.subject,
-        html: input.html || `<p>${String(input.text || "").replace(/\n/g, "<br/>")}</p>`,
+        from,
+        to: [to],
+        subject,
+        html: rawHtml ? sanitize(rawHtml) : `<p>${rawText.replace(/[<>]/g, "").replace(/\n/g, "<br/>")}</p>`,
       };
       return await gw("resend", "/emails", { method: "POST", body: JSON.stringify(body) }, RESEND_API_KEY);
     }
