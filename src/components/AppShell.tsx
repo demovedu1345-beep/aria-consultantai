@@ -28,7 +28,7 @@ export function AppShell({ children, rightSlot }: Props) {
   }, []);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 60);
+    const onScroll = () => setScrolled(window.scrollY > 100);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
@@ -46,15 +46,16 @@ export function AppShell({ children, rightSlot }: Props) {
           className="absolute top-1/2 left-1/2 min-w-full min-h-full -translate-x-1/2 -translate-y-1/2 object-cover"
         />
         <div className="absolute inset-0 bg-black/40" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,hsl(var(--bg))_85%)]" />
-        <div className="absolute bottom-0 inset-x-0 h-64 bg-gradient-to-t from-bg via-bg/60 to-transparent" />
+        <div className="absolute bottom-0 inset-x-0 h-48 bg-gradient-to-t from-bg to-transparent" />
+        {/* extra readability veil under dense dashboard content */}
+        <div className="absolute inset-x-0 top-[60vh] bottom-0 bg-bg" />
       </div>
 
-      {/* Landing-style floating nav */}
+      {/* Landing-style floating nav (matches Hero exactly) */}
       <div className="fixed top-0 left-0 right-0 z-50 flex justify-center pt-4 md:pt-6 px-4">
         <nav
           className={`inline-flex items-center rounded-full backdrop-blur-md border border-white/10 bg-surface/70 px-2 py-2 transition-shadow ${
-            scrolled ? "shadow-md shadow-black/30" : ""
+            scrolled ? "shadow-md shadow-black/20" : ""
           }`}
         >
           <div className="relative h-9 w-9 rounded-full p-[2px] accent-gradient hover:scale-110 transition-transform">
@@ -68,13 +69,15 @@ export function AppShell({ children, rightSlot }: Props) {
             { label: "Dashboard", to: "/app" },
             { label: "Manifesto", to: "/#works" },
           ].map((l) => {
-            const active = pathname === l.to;
+            const active = pathname === l.to || (l.to === "/app" && pathname.startsWith("/app"));
             return (
               <Link
                 key={l.label}
                 to={l.to}
                 className={`text-xs sm:text-sm rounded-full px-3 sm:px-4 py-1.5 sm:py-2 transition ${
-                  active ? "text-text-primary bg-stroke/60" : "text-muted-foreground hover:text-text-primary hover:bg-stroke/50"
+                  active
+                    ? "text-text-primary bg-stroke/60"
+                    : "text-muted-foreground hover:text-text-primary hover:bg-stroke/50"
                 }`}
               >
                 {l.label}
