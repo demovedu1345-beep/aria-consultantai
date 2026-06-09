@@ -12,6 +12,7 @@ import {
 } from "@/lib/aria-store";
 import { Loader2, Mic, RotateCw, Sparkles, Zap, BarChart3 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { DashboardHero } from "@/components/DashboardHero";
 
 export default function Index() {
   const [state, setState] = useState<AriaState>(() => loadState());
@@ -155,7 +156,8 @@ export default function Index() {
   return (
     <AppShell>
       <main className="pb-24">
-        <section className="max-w-6xl mx-auto px-6 md:px-10">
+        <DashboardHero state={state} mode={mode} loading={loading} />
+        <section className="max-w-6xl mx-auto px-6 md:px-10 pt-10">
           <div className="aria-card p-6 md:p-8 backdrop-blur-xl bg-surface/60">
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div className="flex items-center gap-4">
