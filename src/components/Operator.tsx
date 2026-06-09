@@ -27,14 +27,38 @@ interface Props {
 }
 
 const PRESET = "Find 10 high-fit leads, scrape their sites for emails, store the best in CRM, and send personalized outreach.";
+const AUTO_KEY = "aria_operator_auto_v1";
+
+// Pull the most recent dashboard bottleneck out of memory and convert it into an executable objective.
+function deriveObjective(state: AriaState, fallback: string): string {
+  const last = state.sessions[state.sessions.length - 1];
+  if (!last?.content) return fallback;
+  const m = last.content.match(/🚨\s*BOTTLENECK\s*\n+([\s\S]*?)(?:\n\s*\n|⚡|💡|📈|👑|$)/);
+  const bottleneck = (m?.[1] || "").trim().replace(/\s+/g, " ").slice(0, 240);
+  if (!bottleneck) return fallback;
+  return `Bottleneck: ${bottleneck}\n\nExecute the single highest-leverage chain that breaks this bottleneck in the next 24h. Use research → enrich → verify → store → outreach → notify. Every tool call must include reason + expected_outcome.`;
+}
 
 export function Operator({ profile, state, onTrace }: Props) {
-  const [objective, setObjective] = useState(PRESET);
+  const initialObjective = deriveObjective(state, PRESET);
+  const [objective, setObjective] = useState(initialObjective);
   const [running, setRunning] = useState(false);
-  const [auto, setAuto] = useState(false);
+  const [auto, setAuto] = useState<boolean>(() => {
+    try { return localStorage.getItem(AUTO_KEY) === "1"; } catch { return false; }
+  });
   const [cycles, setCycles] = useState<Cycle[]>([]);
   const autoRef = useRef(auto);
   autoRef.current = auto;
+
+  useEffect(() => {
+    try { localStorage.setItem(AUTO_KEY, auto ? "1" : "0"); } catch { /* ignore */ }
+  }, [auto]);
+
+  // When the latest dashboard session changes, refresh the suggested objective if the user hasn't edited it.
+  useEffect(() => {
+    setObjective((cur) => (cur === PRESET || cur === initialObjective ? deriveObjective(state, PRESET) : cur));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.sessions.length]);
 
   async function runOnce(opts: { dry?: boolean } = {}) {
     if (running) return;
