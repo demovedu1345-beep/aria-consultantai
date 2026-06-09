@@ -179,7 +179,7 @@ USER_MESSAGE: ${userMessage || "(none — generate the dashboard for this sessio
     });
   } catch (e) {
     console.error("aria-chat error", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown" }), {
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
