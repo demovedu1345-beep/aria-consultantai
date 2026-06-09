@@ -40,7 +40,10 @@ async function gw(connector: string, path: string, init: RequestInit, apiKey: st
   const text = await r.text();
   let body: unknown = text;
   try { body = JSON.parse(text); } catch { /* keep text */ }
-  if (!r.ok) throw new Error(`${connector} ${r.status}: ${typeof body === "string" ? body : JSON.stringify(body)}`);
+  if (!r.ok) {
+    console.error(`${connector} ${r.status}:`, body);
+    throw new Error(`Upstream ${connector} request failed`);
+  }
   return body;
 }
 
@@ -182,14 +185,14 @@ serve(async (req) => {
         const data = await dispatch(c.tool, c.input || {});
         results.push({ tool: c.tool, action: c.action, ok: true, data });
       } catch (e) {
-        const msg = e instanceof Error ? e.message : "Unknown";
-        console.error("tool failed", c.tool, msg);
-        results.push({ tool: c.tool, action: c.action, ok: false, error: msg });
+        const detail = e instanceof Error ? e.message : "Unknown";
+        console.error("tool failed", c.tool, detail);
+        results.push({ tool: c.tool, action: c.action, ok: false, error: "Tool execution failed" });
       }
     }
     return ok(results);
   } catch (e) {
     console.error("aria-execute error", e);
-    return err(e instanceof Error ? e.message : "Unknown", 500);
+    return err("Internal server error", 500);
   }
 });
