@@ -40,7 +40,10 @@ async function gw(connector: string, path: string, init: RequestInit, apiKey: st
   const text = await r.text();
   let body: unknown = text;
   try { body = JSON.parse(text); } catch { /* keep text */ }
-  if (!r.ok) throw new Error(`${connector} ${r.status}: ${typeof body === "string" ? body : JSON.stringify(body)}`);
+  if (!r.ok) {
+    console.error(`${connector} ${r.status}:`, body);
+    throw new Error(`Upstream ${connector} request failed`);
+  }
   return body;
 }
 
@@ -86,16 +89,48 @@ async function tWebScraper(input: { url: string }) {
   return { url: input.url, title: meta.title || "", emails, markdown: md.slice(0, 4000) };
 }
 
+const EMAIL_RE = /^[^\s@<>"']+@[^\s@<>"',;]+\.[^\s@<>"',;]+$/;
+const ALLOWED_FROM_DOMAINS = ["resend.dev"]; // extend with your verified Resend domains
+const MAX_EMAIL_LEN = 254;
+const MAX_SUBJECT_LEN = 200;
+const MAX_BODY_LEN = 20_000;
+
+function sanitizeHtml(input: string): string {
+  // strip scripts, iframes, event handlers, and javascript: URLs
+  return input
+    .replace(/<\s*(script|iframe|object|embed|link|meta)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, "")
+    .replace(/<\s*(script|iframe|object|embed|link|meta)[^>]*>/gi, "")
+    .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+    .replace(/javascript:/gi, "");
+}
+
 async function tEmailSender(input: { to: string; subject: string; html?: string; text?: string; from?: string }) {
   if (!RESEND_API_KEY) throw new Error("RESEND_API_KEY missing");
   if (!input.to || !input.subject || (!input.html && !input.text)) {
     throw new Error("email_sender requires to, subject, and html or text");
   }
+  const to = String(input.to).trim();
+  if (to.length > MAX_EMAIL_LEN || !EMAIL_RE.test(to)) throw new Error("Invalid recipient email");
+  const subject = String(input.subject).slice(0, MAX_SUBJECT_LEN);
+  const rawHtml = input.html ? String(input.html).slice(0, MAX_BODY_LEN) : "";
+  const rawText = input.text ? String(input.text).slice(0, MAX_BODY_LEN) : "";
+
+  // Restrict sender to allowlisted domains; fall back to safe default
+  let from = "ARIA <onboarding@resend.dev>";
+  if (input.from) {
+    const m = String(input.from).match(/<([^>]+)>|([^\s<>]+@[^\s<>]+)/);
+    const addr = (m?.[1] || m?.[2] || "").toLowerCase();
+    const domain = addr.split("@")[1] || "";
+    if (EMAIL_RE.test(addr) && ALLOWED_FROM_DOMAINS.some((d) => domain === d || domain.endsWith("." + d))) {
+      from = input.from;
+    }
+  }
+
   const body = {
-    from: input.from || "ARIA <onboarding@resend.dev>",
-    to: [input.to],
-    subject: input.subject,
-    html: input.html || `<p>${(input.text || "").replace(/\n/g, "<br/>")}</p>`,
+    from,
+    to: [to],
+    subject,
+    html: rawHtml ? sanitizeHtml(rawHtml) : `<p>${rawText.replace(/[<>]/g, "").replace(/\n/g, "<br/>")}</p>`,
   };
   const data = await gw("resend", "/emails", { method: "POST", body: JSON.stringify(body) }, RESEND_API_KEY);
   return data;
@@ -174,7 +209,8 @@ serve(async (req) => {
       ? body.tool_calls
       : body.tool ? [body] : [];
 
-    if (!calls.length) return err("No tool_calls provided");
+    if (!Array.isArray(calls) || !calls.length) return err("No tool_calls provided");
+    if (calls.length > 8) return err("Too many tool_calls (max 8)");
 
     const results = [];
     for (const c of calls) {
@@ -182,14 +218,14 @@ serve(async (req) => {
         const data = await dispatch(c.tool, c.input || {});
         results.push({ tool: c.tool, action: c.action, ok: true, data });
       } catch (e) {
-        const msg = e instanceof Error ? e.message : "Unknown";
-        console.error("tool failed", c.tool, msg);
-        results.push({ tool: c.tool, action: c.action, ok: false, error: msg });
+        const detail = e instanceof Error ? e.message : "Unknown";
+        console.error("tool failed", c.tool, detail);
+        results.push({ tool: c.tool, action: c.action, ok: false, error: "Tool execution failed" });
       }
     }
     return ok(results);
   } catch (e) {
     console.error("aria-execute error", e);
-    return err(e instanceof Error ? e.message : "Unknown", 500);
+    return err("Internal server error", 500);
   }
 });
