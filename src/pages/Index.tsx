@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -19,8 +19,21 @@ export default function Index() {
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [mode, setMode] = useState<"advisor" | "operator">("advisor");
+  const autoAdvisorRef = useRef(false);
 
   useEffect(() => { saveState(state); }, [state]);
+
+  // Auto-run a RETURNING advisor session on load if it's been >12h since last one
+  useEffect(() => {
+    if (autoAdvisorRef.current) return;
+    if (!state.profile || state.sessions.length === 0) return;
+    const last = state.sessions[state.sessions.length - 1];
+    const ageH = (Date.now() - new Date(last.date).getTime()) / 36e5;
+    if (ageH < 12) return;
+    autoAdvisorRef.current = true;
+    runAria({ type: "RETURNING", profile: state.profile });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.profile, state.sessions.length]);
 
   const activeSession = useMemo(
     () => state.sessions.find((s) => s.id === activeSessionId) ?? state.sessions[state.sessions.length - 1],
