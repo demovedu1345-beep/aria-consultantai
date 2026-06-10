@@ -45,10 +45,9 @@ export function AppShell({ children, rightSlot }: Props) {
           playsInline
           className="absolute top-1/2 left-1/2 min-w-full min-h-full -translate-x-1/2 -translate-y-1/2 object-cover"
         />
-        <div className="absolute inset-0 bg-black/40" />
-        <div className="absolute bottom-0 inset-x-0 h-48 bg-gradient-to-t from-bg to-transparent" />
-        {/* extra readability veil under dense dashboard content */}
-        <div className="absolute inset-x-0 top-[60vh] bottom-0 bg-bg" />
+        {/* Cinematic darken so text stays readable, but galaxy keeps moving behind every section */}
+        <div className="absolute inset-0 bg-black/55" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,hsl(var(--bg)/0.55)_75%)]" />
       </div>
 
       {/* Landing-style floating nav (matches Hero exactly) */}
