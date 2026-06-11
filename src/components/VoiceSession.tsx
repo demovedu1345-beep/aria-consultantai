@@ -88,13 +88,16 @@ export function VoiceSession({ open, onClose, buildPayload, onTranscript }: Prop
       onTranscript?.(ariaEntry);
 
       setPhase("speaking");
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       const ttsResp = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/eleven-tts`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ text: ariaText }),
         }
