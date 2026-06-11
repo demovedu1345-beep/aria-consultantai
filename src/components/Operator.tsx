@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { AriaState, BusinessProfile, buildMemory } from "@/lib/aria-store";
-import { Loader2, Play, Pause, Zap, ChevronRight, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, Play, Pause, Zap, ChevronRight, CheckCircle2, XCircle, Send } from "lucide-react";
 
 interface ToolCall { tool: string; action?: string; input: Record<string, unknown>; reason?: string; expected_outcome?: string; }
 interface TraceItem { tool: string; action?: string; ok: boolean; ms?: number; data?: unknown; error?: string; reason?: string; expected_outcome?: string; }
@@ -48,6 +48,10 @@ export function Operator({ profile, state, onTrace }: Props) {
     try { return localStorage.getItem(AUTO_KEY) === "1"; } catch { return false; }
   });
   const [cycles, setCycles] = useState<Cycle[]>([]);
+  const [testEmail, setTestEmail] = useState("");
+  const [testSubject, setTestSubject] = useState("ARIA test outreach — proving the email loop works");
+  const [testBody, setTestBody] = useState(`Hi,\n\nThis is ARIA confirming the autonomous outreach pipeline is live. Real email, real send, real receipt.\n\n— ARIA Operator`);
+  const [sendingTest, setSendingTest] = useState(false);
   const autoRef = useRef(auto);
   autoRef.current = auto;
 
@@ -94,6 +98,34 @@ export function Operator({ profile, state, onTrace }: Props) {
       toast.error(e instanceof Error ? e.message : "Operator failed");
     } finally {
       setRunning(false);
+    }
+  }
+
+  async function sendTestEmail() {
+    if (!testEmail.trim()) {
+      toast.error("Enter a recipient email");
+      return;
+    }
+    setSendingTest(true);
+    try {
+      await ensureSession();
+      const { data, error } = await supabase.functions.invoke("aria-execute", {
+        body: {
+          tool: "email_sender",
+          input: { to: testEmail.trim(), subject: testSubject, text: testBody },
+        },
+      });
+      if (error) throw error;
+      const result = data?.data?.[0];
+      if (!result?.ok) {
+        toast.error(`Email failed: ${result?.error || "unknown"}. Note: free Resend only sends to the email that owns the Resend account.`);
+      } else {
+        toast.success(`Email sent ✓ — id ${(result.data as any)?.id || "(ok)"}`);
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Send failed");
+    } finally {
+      setSendingTest(false);
     }
   }
 
@@ -151,6 +183,49 @@ export function Operator({ profile, state, onTrace }: Props) {
             {auto ? <><Pause className="h-4 w-4" /> Stop autonomous loop</> : <>Start autonomous loop</>}
           </Button>
           {auto && <span className="text-[10px] uppercase tracking-[0.3em] accent-text animate-pulse">● live</span>}
+        </div>
+      </div>
+
+      {/* Direct email-send proof panel — bypasses the AI plan so you can verify the pipe is real */}
+      <div className="aria-card p-6 md:p-8 backdrop-blur-xl bg-surface/60">
+        <div className="flex items-center gap-2 mb-3">
+          <Send className="h-4 w-4 accent-text" />
+          <span className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">Test outreach · prove the email loop</span>
+        </div>
+        <p className="text-xs text-muted-foreground mb-4">
+          Sends a real email via the same pipeline the autonomous loop uses. <span className="text-text-primary">Important:</span> until a verified sender domain is added to Resend, emails can only be delivered to the address that owns the Resend account (Resend sandbox rule).
+        </p>
+        <div className="grid md:grid-cols-2 gap-3">
+          <Input
+            value={testEmail}
+            onChange={(e) => setTestEmail(e.target.value)}
+            placeholder="you@yourdomain.com"
+            className="bg-bg/60 border-stroke"
+          />
+          <Input
+            value={testSubject}
+            onChange={(e) => setTestSubject(e.target.value)}
+            className="bg-bg/60 border-stroke"
+          />
+        </div>
+        <Textarea
+          value={testBody}
+          onChange={(e) => setTestBody(e.target.value)}
+          rows={4}
+          className="mt-3 bg-bg/60 border-stroke text-sm"
+        />
+        <div className="mt-4">
+          <button
+            disabled={sendingTest}
+            onClick={sendTestEmail}
+            className="relative group rounded-full disabled:opacity-50"
+          >
+            <span className="absolute -inset-[2px] rounded-full accent-gradient" />
+            <span className="relative inline-flex items-center gap-2 bg-text-primary text-bg rounded-full px-5 py-2.5 text-sm">
+              {sendingTest ? <Loader2 className="animate-spin h-4 w-4" /> : <Send className="h-4 w-4" />}
+              Send test email now
+            </span>
+          </button>
         </div>
       </div>
 
