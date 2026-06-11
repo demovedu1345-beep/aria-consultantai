@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { AriaState, BusinessProfile, buildMemory } from "@/lib/aria-store";
-import { Loader2, Play, Pause, Zap, ChevronRight, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, Play, Pause, Zap, ChevronRight, CheckCircle2, XCircle, Send } from "lucide-react";
 
 interface ToolCall { tool: string; action?: string; input: Record<string, unknown>; reason?: string; expected_outcome?: string; }
 interface TraceItem { tool: string; action?: string; ok: boolean; ms?: number; data?: unknown; error?: string; reason?: string; expected_outcome?: string; }
