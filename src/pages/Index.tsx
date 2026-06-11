@@ -133,7 +133,7 @@ export default function Index() {
 
   function newSession() {
     if (!state.profile) return;
-    runAria({ type: "RETURNING", profile: state.profile });
+    setNewSessionOpen(true);
   }
 
   function fullReset() {
