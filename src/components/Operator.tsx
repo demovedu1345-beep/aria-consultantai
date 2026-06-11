@@ -1,3 +1,4 @@
+import { ensureSession } from "@/lib/aria-auth";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -65,6 +66,7 @@ export function Operator({ profile, state, onTrace }: Props) {
     setRunning(true);
     try {
       const last = cycles[0];
+      await ensureSession();
       const { data, error } = await supabase.functions.invoke("aria-operator", {
         body: {
           profile,

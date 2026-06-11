@@ -1,3 +1,4 @@
+import { ensureSession } from "@/lib/aria-auth";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -50,6 +51,7 @@ export default function Index() {
   async function maybeScrape(url: string): Promise<string> {
     if (!url) return "";
     try {
+      await ensureSession();
       const { data, error } = await supabase.functions.invoke("scrape-site", { body: { url } });
       if (error) throw error;
       return data?.markdown || "";
@@ -80,6 +82,7 @@ export default function Index() {
         social_text: opts.socialText || state.social_text || "",
         user_message: opts.userMessage || "",
       };
+      await ensureSession();
       const { data, error } = await supabase.functions.invoke("aria-chat", { body: payload });
       if (error) throw error;
       const content: string = data?.content || "";

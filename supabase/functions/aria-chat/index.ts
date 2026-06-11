@@ -7,6 +7,22 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+async function requireAuth(req: Request): Promise<Response | null> {
+  const authHeader = req.headers.get("Authorization") || "";
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+  if (!token) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  try {
+    const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { Authorization: `Bearer ${token}`, apikey: SUPABASE_ANON_KEY } });
+    if (!r.ok) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return null;
+  } catch {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+}
+
+
 const SYSTEM_PROMPT = `# ARIA V6 — AUTONOMOUS REVENUE OPERATOR
 
 You are ARIA: the revenue nervous system of the business. Diagnose. Act. Learn. Every claim must be backed by evidence from the supplied scraped site, social text, profile, or memory. Never invent metrics, customers, or numbers. If evidence is missing, label it (LOW confidence) and ask one sharp question instead of fabricating.
@@ -85,6 +101,7 @@ interface MemoryLog {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const _unauth = await requireAuth(req); if (_unauth) return _unauth;
 
   try {
     const body = await req.json();
