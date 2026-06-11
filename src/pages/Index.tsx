@@ -20,6 +20,7 @@ export default function Index() {
   const [state, setState] = useState<AriaState>(() => loadState());
   const [loading, setLoading] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false);
+  const [newSessionOpen, setNewSessionOpen] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [mode, setMode] = useState<"advisor" | "operator">("advisor");
   const autoAdvisorRef = useRef(false);
