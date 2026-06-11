@@ -48,6 +48,10 @@ export function Operator({ profile, state, onTrace }: Props) {
     try { return localStorage.getItem(AUTO_KEY) === "1"; } catch { return false; }
   });
   const [cycles, setCycles] = useState<Cycle[]>([]);
+  const [testEmail, setTestEmail] = useState("");
+  const [testSubject, setTestSubject] = useState("ARIA test outreach — proving the email loop works");
+  const [testBody, setTestBody] = useState(`Hi,\n\nThis is ARIA confirming the autonomous outreach pipeline is live. Real email, real send, real receipt.\n\n— ARIA Operator`);
+  const [sendingTest, setSendingTest] = useState(false);
   const autoRef = useRef(auto);
   autoRef.current = auto;
 
