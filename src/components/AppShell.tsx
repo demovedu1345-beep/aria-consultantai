@@ -34,7 +34,7 @@ export function AppShell({ children, rightSlot }: Props) {
   }, []);
 
   return (
-    <div className="relative min-h-screen w-full bg-bg text-text-primary">
+    <div className="relative min-h-screen w-full text-text-primary">
       {/* Cinematic video backdrop — identical to landing Hero */}
       <div className="fixed inset-0 -z-10 overflow-hidden">
         <video

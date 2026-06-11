@@ -14,11 +14,13 @@ import {
 import { Loader2, Mic, RotateCw, Sparkles, Zap, BarChart3 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { DashboardHero } from "@/components/DashboardHero";
+import { NewSessionDialog } from "@/components/NewSessionDialog";
 
 export default function Index() {
   const [state, setState] = useState<AriaState>(() => loadState());
   const [loading, setLoading] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false);
+  const [newSessionOpen, setNewSessionOpen] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [mode, setMode] = useState<"advisor" | "operator">("advisor");
   const autoAdvisorRef = useRef(false);
@@ -131,7 +133,7 @@ export default function Index() {
 
   function newSession() {
     if (!state.profile) return;
-    runAria({ type: "RETURNING", profile: state.profile });
+    setNewSessionOpen(true);
   }
 
   function fullReset() {
@@ -276,6 +278,22 @@ export default function Index() {
             social_text: state.social_text || "",
             user_message: userMessage,
           })}
+        />
+
+        <NewSessionDialog
+          open={newSessionOpen}
+          onClose={() => setNewSessionOpen(false)}
+          defaultUrl={state.website_url}
+          loading={loading}
+          onRun={async ({ websiteUrl, userMessage }) => {
+            setNewSessionOpen(false);
+            await runAria({
+              type: "RETURNING",
+              profile: state.profile!,
+              websiteUrl,
+              userMessage,
+            });
+          }}
         />
       </main>
     </AppShell>

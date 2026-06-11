@@ -65,12 +65,13 @@
     --font-mono: 'JetBrains Mono', ui-monospace, monospace;
   }
 
-  html { color-scheme: dark; }
+  html { color-scheme: dark; @apply bg-bg; }
 
   * { @apply border-border; }
 
   body {
-    @apply bg-bg text-text-primary;
+    @apply text-text-primary;
+    background: transparent;
     font-family: var(--font-body);
     -webkit-font-smoothing: antialiased;
   }
