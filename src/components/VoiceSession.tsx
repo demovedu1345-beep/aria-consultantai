@@ -1,3 +1,4 @@
+import { ensureSession } from "@/lib/aria-auth";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Mic, MicOff, X, Loader2 } from "lucide-react";

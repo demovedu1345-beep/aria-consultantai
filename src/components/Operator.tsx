@@ -1,3 +1,4 @@
+import { ensureSession } from "@/lib/aria-auth";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
