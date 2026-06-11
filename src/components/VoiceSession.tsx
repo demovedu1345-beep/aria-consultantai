@@ -65,6 +65,7 @@ export function VoiceSession({ open, onClose, buildPayload, onTranscript }: Prop
     const base64 = btoa(binary);
 
     try {
+      await ensureSession();
       const { data: sttData, error: sttErr } = await supabase.functions.invoke("eleven-stt", {
         body: { audio_base64: base64, mime: "audio/webm" },
       });

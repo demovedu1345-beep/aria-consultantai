@@ -65,6 +65,7 @@ export function Operator({ profile, state, onTrace }: Props) {
     setRunning(true);
     try {
       const last = cycles[0];
+      await ensureSession();
       const { data, error } = await supabase.functions.invoke("aria-operator", {
         body: {
           profile,
