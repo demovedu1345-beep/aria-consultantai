@@ -279,6 +279,22 @@ export default function Index() {
             user_message: userMessage,
           })}
         />
+
+        <NewSessionDialog
+          open={newSessionOpen}
+          onClose={() => setNewSessionOpen(false)}
+          defaultUrl={state.website_url}
+          loading={loading}
+          onRun={async ({ websiteUrl, userMessage }) => {
+            setNewSessionOpen(false);
+            await runAria({
+              type: "RETURNING",
+              profile: state.profile!,
+              websiteUrl,
+              userMessage,
+            });
+          }}
+        />
       </main>
     </AppShell>
   );
