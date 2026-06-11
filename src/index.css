@@ -60,8 +60,8 @@
     --shadow-blue: 0 0 0 1px rgba(137,170,204,0.3), 0 16px 40px -16px rgba(78,133,191,0.45);
 
     /* Typography */
-    --font-display: 'Instrument Serif', ui-serif, Georgia, serif;
-    --font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --font-display: 'Cormorant Garamond', ui-serif, Georgia, serif;
+    --font-body: 'Outfit', ui-sans-serif, system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, monospace;
   }
 

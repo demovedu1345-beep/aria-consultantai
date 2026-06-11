@@ -21,8 +21,8 @@ async function requireAuth(req: Request): Promise<Response | null> {
 }
 
 
-// Sarah — calm, premium feminine voice, fits ARIA tone.
-const VOICE_ID = "EXAVITQu4vr4xnSDxMaL";
+// Laura — warm, expressive, human feminine voice (better for "alive" conversation).
+const VOICE_ID = "FGY2WhTYpPnrIDTdsKH5";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -50,11 +50,11 @@ serve(async (req) => {
           text: text.slice(0, 4500),
           model_id: "eleven_turbo_v2_5",
           voice_settings: {
-            stability: 0.55,
-            similarity_boost: 0.75,
-            style: 0.25,
+            stability: 0.38,        // lower = more expressive / "alive"
+            similarity_boost: 0.82,
+            style: 0.55,            // higher = more emotional inflection
             use_speaker_boost: true,
-            speed: 1.0,
+            speed: 1.02,
           },
         }),
       }
