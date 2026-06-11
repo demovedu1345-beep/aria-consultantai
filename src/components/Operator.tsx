@@ -101,6 +101,34 @@ export function Operator({ profile, state, onTrace }: Props) {
     }
   }
 
+  async function sendTestEmail() {
+    if (!testEmail.trim()) {
+      toast.error("Enter a recipient email");
+      return;
+    }
+    setSendingTest(true);
+    try {
+      await ensureSession();
+      const { data, error } = await supabase.functions.invoke("aria-execute", {
+        body: {
+          tool: "email_sender",
+          input: { to: testEmail.trim(), subject: testSubject, text: testBody },
+        },
+      });
+      if (error) throw error;
+      const result = data?.data?.[0];
+      if (!result?.ok) {
+        toast.error(`Email failed: ${result?.error || "unknown"}. Note: free Resend only sends to the email that owns the Resend account.`);
+      } else {
+        toast.success(`Email sent ✓ — id ${(result.data as any)?.id || "(ok)"}`);
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Send failed");
+    } finally {
+      setSendingTest(false);
+    }
+  }
+
   // Autonomous loop
   useEffect(() => {
     if (!auto) return;
