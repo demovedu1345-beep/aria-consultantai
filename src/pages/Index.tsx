@@ -14,6 +14,7 @@ import {
 import { Loader2, Mic, RotateCw, Sparkles, Zap, BarChart3 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { DashboardHero } from "@/components/DashboardHero";
+import { NewSessionDialog } from "@/components/NewSessionDialog";
 
 export default function Index() {
   const [state, setState] = useState<AriaState>(() => loadState());
