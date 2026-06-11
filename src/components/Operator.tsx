@@ -186,6 +186,49 @@ export function Operator({ profile, state, onTrace }: Props) {
         </div>
       </div>
 
+      {/* Direct email-send proof panel — bypasses the AI plan so you can verify the pipe is real */}
+      <div className="aria-card p-6 md:p-8 backdrop-blur-xl bg-surface/60">
+        <div className="flex items-center gap-2 mb-3">
+          <Send className="h-4 w-4 accent-text" />
+          <span className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">Test outreach · prove the email loop</span>
+        </div>
+        <p className="text-xs text-muted-foreground mb-4">
+          Sends a real email via the same pipeline the autonomous loop uses. <span className="text-text-primary">Important:</span> until a verified sender domain is added to Resend, emails can only be delivered to the address that owns the Resend account (Resend sandbox rule).
+        </p>
+        <div className="grid md:grid-cols-2 gap-3">
+          <Input
+            value={testEmail}
+            onChange={(e) => setTestEmail(e.target.value)}
+            placeholder="you@yourdomain.com"
+            className="bg-bg/60 border-stroke"
+          />
+          <Input
+            value={testSubject}
+            onChange={(e) => setTestSubject(e.target.value)}
+            className="bg-bg/60 border-stroke"
+          />
+        </div>
+        <Textarea
+          value={testBody}
+          onChange={(e) => setTestBody(e.target.value)}
+          rows={4}
+          className="mt-3 bg-bg/60 border-stroke text-sm"
+        />
+        <div className="mt-4">
+          <button
+            disabled={sendingTest}
+            onClick={sendTestEmail}
+            className="relative group rounded-full disabled:opacity-50"
+          >
+            <span className="absolute -inset-[2px] rounded-full accent-gradient" />
+            <span className="relative inline-flex items-center gap-2 bg-text-primary text-bg rounded-full px-5 py-2.5 text-sm">
+              {sendingTest ? <Loader2 className="animate-spin h-4 w-4" /> : <Send className="h-4 w-4" />}
+              Send test email now
+            </span>
+          </button>
+        </div>
+      </div>
+
       {cycles.length === 0 && !running && (
         <p className="text-sm text-muted-foreground italic">No cycles yet. Run one to see ARIA think and execute.</p>
       )}
