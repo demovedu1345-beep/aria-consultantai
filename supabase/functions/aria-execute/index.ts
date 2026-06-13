@@ -44,6 +44,7 @@ function err(message: string, status = 400, extra: Record<string, unknown> = {})
 }
 
 async function gw(connector: string, path: string, init: RequestInit, apiKey: string) {
+  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
   const r = await fetch(`${GATEWAY}/${connector}${path}`, {
     ...init,
     headers: {
@@ -61,6 +62,13 @@ async function gw(connector: string, path: string, init: RequestInit, apiKey: st
     throw new Error(`Upstream ${connector} request failed`);
   }
   return body;
+}
+
+function hasPlaceholder(value: unknown): boolean {
+  if (typeof value === "string") return /\b(tbd|placeholder|example value|fill me)\b/i.test(value);
+  if (Array.isArray(value)) return value.some(hasPlaceholder);
+  if (value && typeof value === "object") return Object.values(value as Record<string, unknown>).some(hasPlaceholder);
+  return false;
 }
 
 // ---------- Tool implementations ----------
@@ -232,12 +240,13 @@ serve(async (req) => {
     const results = [];
     for (const c of calls) {
       try {
+        if (hasPlaceholder(c.input || {})) throw new Error("Tool input contains unresolved placeholder values");
         const data = await dispatch(c.tool, c.input || {});
         results.push({ tool: c.tool, action: c.action, ok: true, data });
       } catch (e) {
         const detail = e instanceof Error ? e.message : "Unknown";
         console.error("tool failed", c.tool, detail);
-        results.push({ tool: c.tool, action: c.action, ok: false, error: "Tool execution failed" });
+        results.push({ tool: c.tool, action: c.action, ok: false, error: detail });
       }
     }
     return ok(results);
