@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { AriaState, BusinessProfile, buildMemory } from "@/lib/aria-store";
-import { Loader2, Play, Pause, Zap, ChevronRight, CheckCircle2, XCircle, Send } from "lucide-react";
+import { Loader2, Play, Pause, Zap, ChevronRight, CheckCircle2, XCircle, Send, AlertTriangle } from "lucide-react";
 
 interface ToolCall { tool: string; action?: string; input: Record<string, unknown>; reason?: string; expected_outcome?: string; }
 interface TraceItem { tool: string; action?: string; ok: boolean; ms?: number; data?: unknown; error?: string; reason?: string; expected_outcome?: string; }
@@ -54,6 +54,9 @@ export function Operator({ profile, state, onTrace }: Props) {
   const [sendingTest, setSendingTest] = useState(false);
   const autoRef = useRef(auto);
   autoRef.current = auto;
+
+  const latestFailures = cycles[0]?.trace.filter((t) => !t.ok) ?? [];
+  const emailInfraMissing = latestFailures.some((t) => t.tool === "email_sender" && /domain|sender|verify|deliver/i.test(t.error || ""));
 
   useEffect(() => {
     try { localStorage.setItem(AUTO_KEY, auto ? "1" : "0"); } catch { /* ignore */ }
@@ -153,6 +156,18 @@ export function Operator({ profile, state, onTrace }: Props) {
           <Zap className="h-4 w-4 accent-text" />
           <span className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">Operator Objective</span>
         </div>
+        {latestFailures.length > 0 && (
+          <div className="mb-4 rounded-md border border-amber-500/30 bg-amber-500/10 p-4">
+            <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.3em] text-amber-200 mb-2">
+              <AlertTriangle className="h-3.5 w-3.5" /> Live blockers detected
+            </div>
+            <ul className="space-y-1 text-xs text-amber-50/85">
+              {latestFailures.slice(0, 3).map((item, index) => (
+                <li key={index}><span className="font-mono">{item.tool}</span> — {item.error}</li>
+              ))}
+            </ul>
+          </div>
+        )}
         <Textarea
           value={objective}
           onChange={(e) => setObjective(e.target.value)}
@@ -195,6 +210,11 @@ export function Operator({ profile, state, onTrace }: Props) {
         <p className="text-xs text-muted-foreground mb-4">
           Sends a real email via the same pipeline the autonomous loop uses. <span className="text-text-primary">Important:</span> until a verified sender domain is added to Resend, emails can only be delivered to the address that owns the Resend account (Resend sandbox rule).
         </p>
+        {emailInfraMissing && (
+          <div className="mb-4 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-50/90">
+            Email sending is blocked by sender setup, not the button itself. The pipeline is working, but real delivery needs a configured sending domain.
+          </div>
+        )}
         <div className="grid md:grid-cols-2 gap-3">
           <Input
             value={testEmail}
@@ -230,7 +250,7 @@ export function Operator({ profile, state, onTrace }: Props) {
       </div>
 
       {cycles.length === 0 && !running && (
-        <p className="text-sm text-muted-foreground italic">No cycles yet. Run one to see ARIA think and execute.</p>
+        <p className="text-sm text-muted-foreground italic">No cycles yet. Run one to see ARIA search, scrape, validate, and report exactly what worked or failed.</p>
       )}
 
       <div className="space-y-4">

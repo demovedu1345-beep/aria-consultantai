@@ -51,6 +51,9 @@ CORE
 - Re-plan from results. If last_trace failed or returned weak data, diagnose in "thought" and pivot. Never repeat a failed call verbatim.
 - Max 8 tool_calls per cycle. Cheap discovery first; writes (email, DM, CRM) last.
 - Confidence HIGH/MED/LOW on the decision.
+- Prefer tools that are currently healthy. If prior traces show a provider/auth failure, do not use that tool again this cycle.
+- Never output placeholder values like TBD, placeholder, example, fill me, or dummy domains in any tool input.
+- If you do not yet have a concrete company domain, person name, or verified email, use search/scrape/research steps first and stop there.
 
 AVAILABLE TOOLS (names EXACT)
 Research / intel
@@ -79,6 +82,10 @@ CRM / calendar / analytics
 - calendar_book       { summary, description?, start, end, attendees? }
 - analytics_tracker   { event, props? }
 
+RUNTIME REALITY
+- Assume these are usually safest first: google_search, linkedin_search, web_scraper, analytics_tracker.
+- Only use perplexity_research, tavily_search, hunter_find_email, apollo_people, email_sender, slack_notify, crm_create_lead, crm_update_status, calendar_book, linkedin_dm, linkedin_invite when you already have the concrete required input and there is no recent auth/provider failure in LAST_TRACE.
+
 SAFETY
 - Only email addresses confirmed by hunter_find_email (score >= 70), apollo_enrich, web_scraper, or explicitly provided.
 - Every outreach personalised using scraped/research context.
@@ -102,6 +109,7 @@ OUTPUT — STRICT JSON ONLY:
 // ---------- Tool dispatch (mirrors aria-execute) ----------
 
 async function gw(connector: string, path: string, init: RequestInit, apiKey: string) {
+  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
   const r = await fetch(`${GATEWAY}/${connector}${path}`, {
     ...init,
     headers: {
@@ -115,6 +123,57 @@ async function gw(connector: string, path: string, init: RequestInit, apiKey: st
   let body: unknown = text; try { body = JSON.parse(text); } catch { /* keep */ }
   if (!r.ok) throw new Error(`${connector} ${r.status}: ${typeof body === "string" ? body : JSON.stringify(body).slice(0, 400)}`);
   return body;
+}
+
+function hasPlaceholder(value: unknown): boolean {
+  if (typeof value === "string") return /\b(tbd|placeholder|example value|fill me)\b/i.test(value);
+  if (Array.isArray(value)) return value.some(hasPlaceholder);
+  if (value && typeof value === "object") return Object.values(value as Record<string, unknown>).some(hasPlaceholder);
+  return false;
+}
+
+function providerFailure(error: string | undefined) {
+  return !!error && /(401|403|invalid api key|missing_permissions|missing|quota|credits|disabled|unauthorized)/i.test(error);
+}
+
+function sanitizeDecision(decision: any, lastTrace: any) {
+  const safeFirstTools = new Set(["google_search", "linkedin_search", "web_scraper", "analytics_tracker"]);
+  const previousFailures = Array.isArray(lastTrace?.trace)
+    ? new Set(
+        lastTrace.trace
+          .filter((item: any) => !item?.ok && providerFailure(item?.error))
+          .map((item: any) => String(item.tool || ""))
+      )
+    : new Set<string>();
+  const hasSuccessfulTrace = Array.isArray(lastTrace?.trace) && lastTrace.trace.some((item: any) => item?.ok);
+
+  const toolCalls = Array.isArray(decision?.tool_calls) ? decision.tool_calls : [];
+  const filtered = toolCalls.filter((call: any) => {
+    const tool = String(call?.tool || "");
+    if (!tool) return false;
+    if (previousFailures.has(tool)) return false;
+    if (hasPlaceholder(call?.input || {})) return false;
+    if (!hasSuccessfulTrace && !safeFirstTools.has(tool)) return false;
+    return true;
+  });
+
+  const fallbackCalls = filtered.length
+    ? filtered
+    : [
+        {
+          tool: "google_search",
+          action: "Find candidate companies",
+          reason: "Previous premium providers failed or the plan was incomplete, so use the most reliable search path first.",
+          expected_outcome: "A concrete list of company URLs to scrape next.",
+          input: { query: typeof decision?.bottleneck === "string" && decision.bottleneck ? decision.bottleneck : "high-fit companies for this business", limit: 5 },
+        },
+      ];
+
+  return {
+    ...decision,
+    tool_calls: fallbackCalls.slice(0, 8),
+    confidence: decision?.confidence || "MED",
+  };
 }
 
 async function tFirecrawlSearch(query: string, limit = 10) {
@@ -425,7 +484,8 @@ serve(async (req) => {
     const body = await req.json();
     const { profile, memory, objective, last_trace, dry_run } = body;
 
-    const decision = await plan(profile, memory, objective, last_trace);
+    const planned = await plan(profile, memory, objective, last_trace);
+    const decision = sanitizeDecision(planned, last_trace);
     const calls = Array.isArray(decision.tool_calls) ? decision.tool_calls.slice(0, 8) : [];
     const trace: any[] = [];
 
@@ -434,6 +494,7 @@ serve(async (req) => {
         const start = Date.now();
         const meta = { reason: c.reason || "", expected_outcome: c.expected_outcome || "" };
         try {
+          if (hasPlaceholder(c.input || {})) throw new Error("Tool input contains unresolved placeholder values");
           const data = await dispatch(c.tool, c.input || {});
           trace.push({ tool: c.tool, action: c.action || "", ok: true, ms: Date.now() - start, data, ...meta });
         } catch (e) {

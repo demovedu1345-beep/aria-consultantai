@@ -28,6 +28,11 @@ const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY") || "";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 const HUBSPOT_API_KEY = Deno.env.get("HUBSPOT_API_KEY") || "";
 const GOOGLE_CALENDAR_API_KEY = Deno.env.get("GOOGLE_CALENDAR_API_KEY") || "";
+const PERPLEXITY_API_KEY = Deno.env.get("PERPLEXITY_API_KEY") || "";
+const TAVILY_API_KEY = Deno.env.get("TAVILY_API_KEY") || "";
+const HUNTER_API_KEY = Deno.env.get("HUNTER_API_KEY") || "";
+const APOLLO_API_KEY = Deno.env.get("APOLLO_API_KEY") || "";
+const APIFY_API_TOKEN = Deno.env.get("APIFY_API_TOKEN") || "";
 
 const GATEWAY = "https://connector-gateway.lovable.dev";
 
@@ -44,6 +49,7 @@ function err(message: string, status = 400, extra: Record<string, unknown> = {})
 }
 
 async function gw(connector: string, path: string, init: RequestInit, apiKey: string) {
+  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
   const r = await fetch(`${GATEWAY}/${connector}${path}`, {
     ...init,
     headers: {
@@ -61,6 +67,13 @@ async function gw(connector: string, path: string, init: RequestInit, apiKey: st
     throw new Error(`Upstream ${connector} request failed`);
   }
   return body;
+}
+
+function hasPlaceholder(value: unknown): boolean {
+  if (typeof value === "string") return /\b(tbd|placeholder|example value|fill me)\b/i.test(value);
+  if (Array.isArray(value)) return value.some(hasPlaceholder);
+  if (value && typeof value === "object") return Object.values(value as Record<string, unknown>).some(hasPlaceholder);
+  return false;
 }
 
 // ---------- Tool implementations ----------
@@ -203,11 +216,142 @@ async function tAnalyticsTracker(input: Record<string, unknown>) {
   return { logged_at: new Date().toISOString(), event: input };
 }
 
+async function tPerplexityResearch(input: { query: string; recency?: string; mode?: string }) {
+  if (!PERPLEXITY_API_KEY) throw new Error("PERPLEXITY_API_KEY missing");
+  const body: Record<string, unknown> = {
+    model: "sonar-pro",
+    messages: [
+      { role: "system", content: "Be precise, factual, cite sources." },
+      { role: "user", content: String(input.query || "") },
+    ],
+  };
+  if (input.recency) body.search_recency_filter = String(input.recency);
+  if (input.mode && input.mode !== "default") body.search_mode = String(input.mode);
+  const r = await fetch("https://api.perplexity.ai/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${PERPLEXITY_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const d = await r.json();
+  if (!r.ok) throw new Error(`perplexity ${r.status}: ${JSON.stringify(d).slice(0, 400)}`);
+  return { answer: d?.choices?.[0]?.message?.content || "", citations: d?.citations || [] };
+}
+
+async function tTavilySearch(input: { query: string; depth?: string; limit?: number }) {
+  if (!TAVILY_API_KEY) throw new Error("TAVILY_API_KEY missing");
+  const r = await fetch("https://api.tavily.com/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      api_key: TAVILY_API_KEY,
+      query: String(input.query || ""),
+      search_depth: input.depth || "basic",
+      max_results: Math.min(Number(input.limit || 8), 20),
+      include_answer: true,
+    }),
+  });
+  const d = await r.json();
+  if (!r.ok) throw new Error(`tavily ${r.status}: ${JSON.stringify(d).slice(0, 400)}`);
+  return { answer: d.answer || "", results: (d.results || []).map((x: any) => ({ title: x.title, url: x.url, snippet: x.content })) };
+}
+
+async function tHunterDomain(input: { domain: string; limit?: number }) {
+  if (!HUNTER_API_KEY) throw new Error("HUNTER_API_KEY missing");
+  const p = new URLSearchParams({
+    domain: String(input.domain || ""),
+    limit: String(input.limit || 10),
+    api_key: HUNTER_API_KEY,
+  });
+  const r = await fetch(`https://api.hunter.io/v2/domain-search?${p}`);
+  const d = await r.json();
+  if (!r.ok) throw new Error(`hunter ${r.status}: ${JSON.stringify(d).slice(0, 300)}`);
+  return d.data;
+}
+
+async function tHunterFindEmail(input: { domain: string; first_name: string; last_name: string }) {
+  if (!HUNTER_API_KEY) throw new Error("HUNTER_API_KEY missing");
+  const p = new URLSearchParams({
+    domain: String(input.domain || ""),
+    first_name: String(input.first_name || ""),
+    last_name: String(input.last_name || ""),
+    api_key: HUNTER_API_KEY,
+  });
+  const r = await fetch(`https://api.hunter.io/v2/email-finder?${p}`);
+  const d = await r.json();
+  if (!r.ok) throw new Error(`hunter ${r.status}: ${JSON.stringify(d).slice(0, 300)}`);
+  return d.data;
+}
+
+async function tApolloPeople(input: { titles?: string[]; company_domains?: string[]; keywords?: string; limit?: number }) {
+  if (!APOLLO_API_KEY) throw new Error("APOLLO_API_KEY missing");
+  const body: Record<string, unknown> = {
+    api_key: APOLLO_API_KEY,
+    page: 1,
+    per_page: Math.min(Number(input.limit || 10), 25),
+  };
+  if (input.titles) body.person_titles = input.titles;
+  if (input.company_domains) body.q_organization_domains = input.company_domains.join("\n");
+  if (input.keywords) body.q_keywords = input.keywords;
+  const r = await fetch("https://api.apollo.io/api/v1/mixed_people/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Api-Key": APOLLO_API_KEY, "Cache-Control": "no-cache" },
+    body: JSON.stringify(body),
+  });
+  const d = await r.json();
+  if (!r.ok) throw new Error(`apollo ${r.status}: ${JSON.stringify(d).slice(0, 300)}`);
+  const people = (d.people || []).map((p: any) => ({
+    name: p.name, title: p.title, company: p.organization?.name,
+    domain: p.organization?.primary_domain, linkedin: p.linkedin_url, email: p.email,
+  }));
+  return { people, total: d.pagination?.total_entries };
+}
+
+async function tApolloEnrich(input: { email?: string; first_name?: string; last_name?: string; company_domain?: string }) {
+  if (!APOLLO_API_KEY) throw new Error("APOLLO_API_KEY missing");
+  const r = await fetch("https://api.apollo.io/api/v1/people/match", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Api-Key": APOLLO_API_KEY, "Cache-Control": "no-cache" },
+    body: JSON.stringify({
+      api_key: APOLLO_API_KEY,
+      email: input.email,
+      first_name: input.first_name,
+      last_name: input.last_name,
+      domain: input.company_domain,
+      reveal_personal_emails: false,
+    }),
+  });
+  const d = await r.json();
+  if (!r.ok) throw new Error(`apollo ${r.status}: ${JSON.stringify(d).slice(0, 300)}`);
+  return d.person || d;
+}
+
+async function tApifyRunActor(input: { actor_id: string; input?: unknown }) {
+  if (!APIFY_API_TOKEN) throw new Error("APIFY_API_TOKEN missing");
+  const actor = String(input.actor_id || "").replace("/", "~");
+  const r = await fetch(`https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${APIFY_API_TOKEN}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input.input || {}),
+  });
+  const text = await r.text();
+  let d: unknown = text;
+  try { d = JSON.parse(text); } catch { /* keep text */ }
+  if (!r.ok) throw new Error(`apify ${r.status}: ${typeof d === "string" ? d.slice(0, 300) : JSON.stringify(d).slice(0, 300)}`);
+  return { items: Array.isArray(d) ? d.slice(0, 50) : d };
+}
+
 async function dispatch(tool: string, input: Record<string, unknown>) {
   switch (tool) {
     case "google_search":     return tGoogleSearch(input as any);
     case "linkedin_search":   return tLinkedinSearch(input as any);
     case "web_scraper":       return tWebScraper(input as any);
+    case "perplexity_research": return tPerplexityResearch(input as any);
+    case "tavily_search":       return tTavilySearch(input as any);
+    case "hunter_domain":       return tHunterDomain(input as any);
+    case "hunter_find_email":   return tHunterFindEmail(input as any);
+    case "apollo_people":       return tApolloPeople(input as any);
+    case "apollo_enrich":       return tApolloEnrich(input as any);
+    case "apify_run_actor":     return tApifyRunActor(input as any);
     case "email_sender":      return tEmailSender(input as any);
     case "crm_create_lead":   return tCrmCreateLead(input as any);
     case "crm_update_status": return tCrmUpdateStatus(input as any);
@@ -232,12 +376,13 @@ serve(async (req) => {
     const results = [];
     for (const c of calls) {
       try {
+        if (hasPlaceholder(c.input || {})) throw new Error("Tool input contains unresolved placeholder values");
         const data = await dispatch(c.tool, c.input || {});
         results.push({ tool: c.tool, action: c.action, ok: true, data });
       } catch (e) {
         const detail = e instanceof Error ? e.message : "Unknown";
         console.error("tool failed", c.tool, detail);
-        results.push({ tool: c.tool, action: c.action, ok: false, error: "Tool execution failed" });
+        results.push({ tool: c.tool, action: c.action, ok: false, error: detail });
       }
     }
     return ok(results);
