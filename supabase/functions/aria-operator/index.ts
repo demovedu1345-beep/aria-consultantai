@@ -137,6 +137,7 @@ function providerFailure(error: string | undefined) {
 }
 
 function sanitizeDecision(decision: any, lastTrace: any) {
+  const safeFirstTools = new Set(["google_search", "linkedin_search", "web_scraper", "analytics_tracker"]);
   const previousFailures = Array.isArray(lastTrace?.trace)
     ? new Set(
         lastTrace.trace
@@ -144,6 +145,7 @@ function sanitizeDecision(decision: any, lastTrace: any) {
           .map((item: any) => String(item.tool || ""))
       )
     : new Set<string>();
+  const hasSuccessfulTrace = Array.isArray(lastTrace?.trace) && lastTrace.trace.some((item: any) => item?.ok);
 
   const toolCalls = Array.isArray(decision?.tool_calls) ? decision.tool_calls : [];
   const filtered = toolCalls.filter((call: any) => {
@@ -151,6 +153,7 @@ function sanitizeDecision(decision: any, lastTrace: any) {
     if (!tool) return false;
     if (previousFailures.has(tool)) return false;
     if (hasPlaceholder(call?.input || {})) return false;
+    if (!hasSuccessfulTrace && !safeFirstTools.has(tool)) return false;
     return true;
   });
 
