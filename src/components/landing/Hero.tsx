@@ -71,17 +71,23 @@ export function Hero() {
           </div>
           <div className="w-px h-5 bg-stroke mx-1 hidden sm:block" />
           {[
-            { label: "Home", to: "/" },
+            { label: "Audit", to: "/#audit" },
+            { label: "ROI", to: "/#roi" },
+            { label: "Cases", to: "/#cases" },
+            { label: "Book", to: "/#booking" },
             { label: "Dashboard", to: "/app" },
-            { label: "Manifesto", to: "/" },
           ].map((l) => (
-            <Link
-              key={l.label}
-              to={l.to}
-              className="text-xs sm:text-sm rounded-full px-3 sm:px-4 py-1.5 sm:py-2 text-muted-foreground hover:text-text-primary hover:bg-stroke/50 transition"
-            >
-              {l.label}
-            </Link>
+            l.to.startsWith("/#") ? (
+              <a key={l.label} href={l.to.slice(1)}
+                className="text-xs sm:text-sm rounded-full px-3 sm:px-4 py-1.5 sm:py-2 text-muted-foreground hover:text-text-primary hover:bg-stroke/50 transition">
+                {l.label}
+              </a>
+            ) : (
+              <Link key={l.label} to={l.to}
+                className="text-xs sm:text-sm rounded-full px-3 sm:px-4 py-1.5 sm:py-2 text-muted-foreground hover:text-text-primary hover:bg-stroke/50 transition">
+                {l.label}
+              </Link>
+            )
           ))}
           <div className="w-px h-5 bg-stroke mx-1 hidden sm:block" />
           <Link
@@ -119,18 +125,18 @@ export function Hero() {
           and remembers every conversation — so you never start from zero.
         </p>
         <div className="blur-in inline-flex gap-4 flex-wrap justify-center">
+          <a
+            href="#audit"
+            className="rounded-full text-sm px-7 py-3.5 bg-text-primary text-bg hover:scale-105 transition-transform"
+          >
+            Get free AI audit
+          </a>
           <Link
             to="/app"
-            className="rounded-full text-sm px-7 py-3.5 bg-text-primary text-bg hover:scale-105 transition-transform"
+            className="rounded-full text-sm px-7 py-3.5 border-2 border-stroke bg-bg text-text-primary hover:scale-105 transition-transform"
           >
             Enter Dashboard
           </Link>
-          <a
-            href="#works"
-            className="rounded-full text-sm px-7 py-3.5 border-2 border-stroke bg-bg text-text-primary hover:scale-105 transition-transform"
-          >
-            See the work
-          </a>
         </div>
       </div>
 

@@ -79,9 +79,9 @@ export function Footer() {
             Available for projects
           </div>
           <div className="flex gap-5 text-sm text-muted-foreground">
-            {["Twitter", "LinkedIn", "Dribbble", "GitHub"].map((s) => (
-              <a key={s} href="#" className="hover:text-text-primary transition-colors">{s}</a>
-            ))}
+            <a href="/privacy" className="hover:text-text-primary transition-colors">Privacy</a>
+            <a href="/terms" className="hover:text-text-primary transition-colors">Terms</a>
+            <a href="/admin" className="hover:text-text-primary transition-colors">Admin</a>
           </div>
         </div>
       </div>
